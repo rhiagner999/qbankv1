@@ -822,7 +822,7 @@ const BYID={};ALL.forEach(q=>BYID[q.id]=q);
 /* ================= حالة محفوظة ================= */
 const DEFAULT_DB='https://qabank-6f97a-default-rtdb.firebaseio.com';
 const K2='rhqb_v2',K1='rhqb_v1';
-const defState=()=>({pts:0,streak:0,last:'',ans:0,cor:0,secs:0,q:{},sess:[],theme:'dark',cfg:null,name:'',uid:'',accountKey:'',auth:null,db:DEFAULT_DB==='__DB__'?'':DEFAULT_DB,days:{},week:{k:'',p:0},ar:true,duas:true,rooms:[],bell:0});
+const defState=()=>({pts:0,streak:0,last:'',ans:0,cor:0,secs:0,q:{},sess:[],theme:'dark',cfg:null,name:'',uid:'',accountKey:'',db:DEFAULT_DB==='__DB__'?'':DEFAULT_DB,days:{},week:{k:'',p:0},ar:true,duas:true,rooms:[],bell:0});
 let S=defState();
 try{const raw=localStorage.getItem(K2)||localStorage.getItem(K1);if(raw)S=Object.assign(defState(),JSON.parse(raw));}catch(e){}
 // Use one shared Firebase project on local HTML and GitHub Pages.
@@ -886,38 +886,10 @@ logo:'<path d="M4 3l10 9-10 9h5l10-9L9 3z"/>'
 function ic(n,c){return '<svg class="ic '+(c||'')+'" viewBox="0 0 24 24" aria-hidden="true">'+(IC[n]||'')+'</svg>';}
 
 /* ================= قاعدة البيانات (Firebase Realtime DB عبر REST) ================= */
-const FB_KEY='AIzaSyBc86nkjNXZuACMlw3UcpZdCOFdJUdt6Oo';
-const AUTH_HOST='https://identitytoolkit.googleapis.com',TOKEN_HOST='https://securetoken.googleapis.com';
-let AU={id:'',exp:0},AUp=null;
-async function authToken(){
-  if(AU.id&&Date.now()<AU.exp-60000)return AU.id;
-  if(!S.auth||!S.auth.refresh)return '';
-  if(!AUp)AUp=(async()=>{
-    try{
-      const r=await fetch(TOKEN_HOST+'/v1/token?key='+FB_KEY,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'grant_type=refresh_token&refresh_token='+encodeURIComponent(S.auth.refresh)});
-      const j=await r.json();
-      if(!r.ok||!j.id_token){const m=(j.error&&j.error.message)||'';if(/TOKEN_EXPIRED|USER_NOT_FOUND|USER_DISABLED|INVALID_REFRESH_TOKEN/.test(m)){S.auth=null;S.accountKey='';save();AU={id:'',exp:0};}throw new Error(m||'auth');}
-      AU={id:j.id_token,exp:Date.now()+(+j.expires_in||3600)*1000};
-      if(j.refresh_token&&S.auth){S.auth.refresh=j.refresh_token;save();}
-      return AU.id;
-    }finally{AUp=null;}
-  })();
-  return AUp;
-}
-async function authCall(kind,email,password){
-  const r=await fetch(AUTH_HOST+'/v1/accounts:'+kind+'?key='+FB_KEY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email,password:password,returnSecureToken:true})});
-  return r.json();
-}
-async function emailOf(key){
-  let h='';
-  try{const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode('rhqb-user:'+key));h=Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,'0')).join('').slice(0,40);}
-  catch(e){let a=2166136261,c=5381;for(const ch of 'rhqb-user:'+key){a^=ch.charCodeAt(0);a=Math.imul(a,16777619);c=(c*33+ch.charCodeAt(0))|0;}h=(a>>>0).toString(16).padStart(8,'0')+(c>>>0).toString(16).padStart(8,'0');}
-  return 'u'+h+'@rhqb.app';
-}
 const DB={st:'off',
   url(){let u=(S.db||'').trim();if(!u)return '';if(!/^https?:\/\//.test(u))u='https://'+u;return u.replace(/\/+$/,'');},
   ok(){return !!this.url();},
-  async req(m,p,b){let tk='';try{tk=await authToken();}catch(e){}if(!tk){throw new Error('NOAUTH');}try{const r=await fetch(this.url()+p+'.json?auth='+encodeURIComponent(tk),{method:m,headers:{'Content-Type':'application/json'},body:b===undefined?undefined:JSON.stringify(b)});if(!r.ok)throw new Error('HTTP '+r.status);const j=await r.json();this.set('on');return j;}catch(e){this.set('err');throw e;}},
+  async req(m,p,b){try{const r=await fetch(this.url()+p+'.json',{method:m,headers:{'Content-Type':'application/json'},body:b===undefined?undefined:JSON.stringify(b)});if(!r.ok)throw new Error('HTTP '+r.status);const j=await r.json();this.set('on');return j;}catch(e){this.set('err');throw e;}},
   get(p){return this.req('GET',p);},put(p,v){return this.req('PUT',p,v);},patch(p,v){return this.req('PATCH',p,v);},
   set(s){if(this.st!==s){this.st=s;paintDb();}}
 };
@@ -929,14 +901,30 @@ let identityReady=false,identityBusy=false;
 async function syncIdentity(){
   if(!DB.ok()||!S.name||identityBusy)return; identityBusy=true;
   try{
+    let remoteUid='';
+    if(S.accountKey){
+      const account=await DB.get('/accounts/'+S.accountKey);
+      if(account&&account.uid)remoteUid=account.uid;
+      else throw new Error('Account record missing');
+    }else{
+      const key=nameKey(S.name), indexed=await DB.get('/nameIndex/'+key);
+      remoteUid=indexed&&indexed.uid;
+      if(!remoteUid){
+        const players=await DB.get('/players')||{};
+        const match=Object.keys(players).find(k=>String(players[k]?.name||'').trim().toLowerCase()===S.name.trim().toLowerCase());
+        remoteUid=match||S.uid;
+        await DB.put('/nameIndex/'+key,{uid:remoteUid,name:S.name});
+      }
+    }
+    if(remoteUid!==S.uid)S.uid=remoteUid;
     const remote=await DB.get('/players/'+S.uid);
     if(remote){
       S.pts=Math.max(Number(S.pts)||0,Number(remote.pts)||0);
       S.ans=Math.max(Number(S.ans)||0,Number(remote.ans)||0);
       S.cor=Math.max(Number(S.cor)||0,Number(remote.cor)||0);
       const wk=weekKey();
-      if(remote.wk===wk)S.week={k:wk,p:Math.max(Number(S.week&&S.week.k===wk?S.week.p:0)||0,Number(remote.wp)||0)};
-      else if(!S.week||S.week.k!==wk)S.week={k:wk,p:0};
+      if(remote.wk===wk)S.week={k:wk,p:Math.max(Number(S.week?.k===wk?S.week.p:0)||0,Number(remote.wp)||0)};
+      else if(S.week?.k!==wk)S.week={k:wk,p:0};
     }
     identityReady=true;save();
   }catch(e){identityReady=false;}finally{identityBusy=false;}
@@ -952,41 +940,33 @@ function resetProgressForAccount(){S.pts=0;S.streak=0;S.last='';S.ans=0;S.cor=0;
 async function enterAccount(){
   const name=($('#authName')?.value||'').trim().slice(0,20),password=$('#authPass')?.value||'';
   if(name.length<2){toast('Enter a name with at least 2 characters · اكتب اسم من حرفين على الأقل');return;}
-  if(password.length<6){toast('Password must be at least 6 characters · كلمة المرور 6 أحرف على الأقل');return;}
-  if(FB_KEY==='AIzaSyBc86nkjNXZuACMlw3UcpZdCOFdJUdt6Oo'){toast('Firebase API key is missing in this file · مفتاح Firebase ناقص');return;}
+  if(password.length<4){toast('Password must be at least 4 characters · كلمة المرور 4 أحرف على الأقل');return;}
+  if(!DB.ok()){toast('Cannot connect to the shared database. Check your connection. · تعذر الاتصال بقاعدة البيانات');return;}
   const btn=$('#authGo');if(btn){btn.disabled=true;btn.textContent='Connecting…';}
   try{
-    const previousName=S.name||'';
-    const key=accountKeyOf(name);if(!key)throw new Error('Choose a different name · اختار اسم تاني');
-    const email=await emailOf(key);
-    let r=await authCall('signInWithPassword',email,password);
-    if(r.error){
-      const m=r.error.message||'';
-      if(/EMAIL_NOT_FOUND|INVALID_LOGIN_CREDENTIALS|INVALID_PASSWORD/.test(m)){
-        const r2=await authCall('signUp',email,password);
-        if(r2.error){
-          const m2=r2.error.message||'';
-          if(/EMAIL_EXISTS/.test(m2))throw new Error('Wrong password for this name · كلمة المرور غير صحيحة للاسم ده');
-          if(/WEAK_PASSWORD/.test(m2))throw new Error('Password is too weak · كلمة المرور ضعيفة');
-          if(/OPERATION_NOT_ALLOWED/.test(m2))throw new Error('Email/Password sign-in is not enabled in Firebase');
-          throw new Error(m2);
-        }
-        r=r2;
-      }else if(/TOO_MANY_ATTEMPTS/.test(m))throw new Error('Too many attempts, try later · محاولات كتير، جرّب بعدين');
-      else throw new Error(m);
+    const previousName=S.name||'',previousAccount=S.accountKey||'';
+    const key=accountKeyOf(name);if(!key)throw new Error('Choose a different name');
+    const digest=await passwordDigest(password);let account=await DB.get('/accounts/'+key),created=false;
+    if(account){if(account.passHash!==digest){throw new Error('Wrong password for this name · كلمة المرور غير صحيحة للاسم ده');}}
+    else{created=true;
+      let uid='';const idx=await DB.get('/nameIndex/'+nameKey(name));
+      if(idx&&idx.uid)uid=idx.uid;
+      if(!uid){const players=await DB.get('/players')||{};uid=Object.keys(players).find(k=>String(players[k]?.name||'').trim().toLowerCase()===name.toLowerCase())||'';}
+      if(!uid)uid='u'+Math.random().toString(36).slice(2,10)+Date.now().toString(36).slice(-4);
+      account={name,uid,passHash:digest,createdAt:Date.now()};
+      await DB.put('/accounts/'+key,account);
     }
-    if(previousName&&previousName.trim().toLowerCase()!==name.toLowerCase())resetProgressForAccount();
-    AU={id:r.idToken,exp:Date.now()+(+r.expiresIn||3600)*1000};
-    S.auth={refresh:r.refreshToken};S.uid=r.localId;S.accountKey=key;S.name=name;identityReady=false;save();
-    await syncIdentity();if(!identityReady)throw new Error('Could not reach the database. Check Firebase rules. · تعذر الوصول لقاعدة البيانات');
-    await syncNow();modal('');hdr();shellAuthed();if(cur.v==='dashboard')VIEWS.dashboard();toast('Signed in — your points are synced across devices. · تم تسجيل الدخول ونقاطك محفوظة');
+    if((previousAccount&&previousAccount!==key)||(previousName&&previousName.trim().toLowerCase()!==name.trim().toLowerCase())||(created&&!previousName)){resetProgressForAccount();}
+    S.name=account.name||name;S.uid=account.uid;S.accountKey=key;identityReady=false;save();
+    await syncIdentity();if(!identityReady)throw new Error('Could not load this account. Try again. · تعذر تحميل الحساب');
+    await syncNow();modal('');hdr();if(cur.v==='dashboard')VIEWS.dashboard();toast('Account ready — your points are synced across devices. · الحساب جاهز ونقاطك محفوظة');
   }catch(e){toast(esc(e.message||'Connection failed · فشل الاتصال'));if(btn){btn.disabled=false;btn.textContent='Continue / Create account · دخول / إنشاء حساب';}}
 }
-function shellAuthed(){setTimeout(pollInbox,300);}
 async function syncNow(){if(!DB.ok())return;try{
   const wk=weekKey();if(!S.week||S.week.k!==wk)S.week={k:wk,p:0};
   if(S.name&&!identityReady)await syncIdentity();
   await DB.patch('/players/'+S.uid,{name:S.name||'Player',pts:S.pts,lvl:lvlOf(S.pts),ans:S.ans,cor:S.cor,wk:S.week.k,wp:S.week.p,upd:{'.sv':'timestamp'},seen:{'.sv':'timestamp'}});
+  if(S.name)await DB.put('/nameIndex/'+nameKey(S.name),{uid:S.uid,name:S.name});
 }catch(e){}}
 function addPoints(n,ok){
   S.pts+=n;S.ans++;if(ok)S.cor++;
@@ -1330,8 +1310,8 @@ VIEWS.board=function(a){
 VIEWS.settings=function(){
   const row=(t,s,id,on)=>'<div class="li"><div class="t"><b>'+t+'</b><span>'+s+'</span></div><button class="toggle'+(on?' on':'')+'" data-act="'+id+'" aria-label="'+t+'"></button></div>';
   main('<div class="fade"><h1>Settings</h1><div class="grid g2 mt2"><div class="card"><h3>Preferences</h3>'+row('Dark mode','Modern dark theme · الوضع الداكن','th',S.theme!=='light')+row('Arabic translation','Show Arabic under every item · الترجمة العربية','ar',S.ar)+row('Du\'a reminders','Every 5 answered questions · تذكير بالدعاء','du',S.duas)+
-  '<label class="f mt2">Your name · اسمك</label><input type="text" id="nm" maxlength="20" value="'+esc(S.name)+'" disabled></div>'+
-  '<div class="card"><h3>Account · الحساب</h3><div class="note">Signed in as <b>'+esc(S.name)+'</b>. Your points and leaderboard sync across devices.<br><span class="ar">مسجّل باسم '+esc(S.name)+'. نقاطك بتتزامن بين أجهزتك.</span></div><div class="row mt"><button class="btn ghost" data-act="logout">Sign out · تسجيل الخروج</button></div></div></div>'+
+  '<label class="f mt2">Your name · اسمك</label><input type="text" id="nm" maxlength="20" value="'+esc(S.name)+'"></div>'+
+  '<div class="card"><h3>Cloud sync · المزامنة السحابية</h3><div class="note">Your account, points, and leaderboard sync automatically across devices when you sign in.<br><span class="ar">حسابك ونقاطك ولوحة المتصدرين بيتزامنوا تلقائيًا بين أجهزتك بعد تسجيل الدخول.</span></div><div class="li mt"><div class="t"><b>Shared sync</b><span>Automatic connection · اتصال تلقائي</span></div><span class="badge ok">Enabled</span></div></div></div>'+
   '<div class="card mt2"><h3>Danger zone</h3><div class="row mt wrap"><button class="btn danger" data-act="reset">Reset all progress · مسح التقدم</button></div></div></div>');
   $('#nm').onchange=e=>{S.name=e.target.value.trim().slice(0,20);save();hdr();syncSoon();};
 };
@@ -1339,8 +1319,7 @@ ACT.th=()=>{S.theme=S.theme==='light'?'dark':'light';save();applyTheme();rr(VIEW
 ACT.ar=()=>{S.ar=!S.ar;save();applyTheme();rr(VIEWS.settings);};
 ACT.du=()=>{S.duas=!S.duas;save();rr(VIEWS.settings);};
 ACT.dbsave=async()=>{S.db=$('#dbu').value.trim();save();const m=$('#dbm');if(!S.db){m.textContent='Local only';paintDb();return;}m.textContent='Testing…';try{await DB.put('/ping/'+S.uid,{t:{'.sv':'timestamp'}});await syncNow();m.textContent='✓ Connected';m.style.color='var(--ok)';}catch(e){m.textContent='✗ Failed — check URL and rules (test mode)';m.style.color='var(--bad)';}paintDb();};
-ACT.logout=()=>{if(!confirm('تسجيل الخروج؟ تقدمك محفوظ على حسابك.'))return;S.auth=null;S.accountKey='';save();location.reload();};
-ACT.reset=()=>{if(confirm('مسح كل التقدم؟ مش هينفع ترجعه.')){const keep={name:S.name,uid:S.uid,db:S.db,theme:S.theme,auth:S.auth,accountKey:S.accountKey};S=Object.assign(defState(),keep);save();hdr();VIEWS.settings();}};
+ACT.reset=()=>{if(confirm('مسح كل التقدم؟ مش هينفع ترجعه.')){const keep={name:S.name,uid:S.uid,db:S.db,theme:S.theme};S=Object.assign(defState(),keep);save();hdr();VIEWS.settings();}};
 
 /* ================= النتائج ================= */
 function resultsView(sum,results){
@@ -1528,11 +1507,10 @@ function boot(){
   shell();
   const h=(location.hash||'').match(/join=/);
   go(h?'arena':'dashboard');
-  if(!(S.auth&&S.auth.refresh))S.accountKey='';
-  if(S.accountKey){identityReady=false;authToken().then(()=>syncIdentity()).then(()=>{syncNow();pollInbox();}).catch(()=>{if(!(S.auth&&S.auth.refresh))location.reload();});}
+  if(S.name&&S.accountKey){identityReady=false;syncIdentity().then(()=>syncNow());}
   if(S.accountKey)syncSoon();
   if(!S.accountKey){
-    modal('<div class="auth-panel"><div class="auth-brand"><div class="auth-brand-icon">'+ic('logo')+'</div><div><div class="auth-brand-name">RH Q-BANK</div><div class="auth-brand-sub">Reproductive Health · Question Bank</div></div></div><div class="auth-kicker">'+ic('shield','sm')+' SECURE ACCOUNT ACCESS</div><h2 class="auth-title">Welcome back <span style="color:#7aa2ff">👋</span></h2><p class="auth-description">Sign in or create your account to keep your study progress and points synced across devices.<br><span class="ar">سجّل دخولك أو أنشئ حسابًا عشان نقاطك وتقدمك في المذاكرة يفضلوا محفوظين على كل أجهزتك.</span></p><label class="auth-field" for="authName"><span class="auth-label"><span>Full name</span><span class="ar">الاسم</span></span><span class="auth-input-wrap">'+ic('user','auth-field-icon')+'<input type="text" id="authName" maxlength="20" autocomplete="username" placeholder="Enter your name" value="'+esc(S.name||'')+'"></span></label><label class="auth-field" for="authPass"><span class="auth-label"><span>Password</span><span class="ar">كلمة المرور</span></span><span class="auth-input-wrap">'+ic('lock','auth-field-icon')+'<input type="password" id="authPass" minlength="6" autocomplete="current-password" placeholder="At least 6 characters"></span></label><div class="auth-hint">'+ic('info')+'<span>If the name is new, an account will be created. If it already exists, enter its password to sign in.<br><span class="ar">لو الاسم جديد هنعمل حساب، ولو مسجّل قبل كده اكتب كلمة المرور الخاصة بيه.</span></span></div><button class="btn auth-submit" id="authGo">Continue <span aria-hidden="true">→</span> <span class="ar">دخول / إنشاء حساب</span></button><div class="auth-footer">'+ic('shield-check')+' Your progress is synced automatically across devices</div></div>');
+    modal('<div class="auth-panel"><div class="auth-brand"><div class="auth-brand-icon">'+ic('logo')+'</div><div><div class="auth-brand-name">RH Q-BANK</div><div class="auth-brand-sub">Reproductive Health · Question Bank</div></div></div><div class="auth-kicker">'+ic('shield','sm')+' SECURE ACCOUNT ACCESS</div><h2 class="auth-title">Welcome back <span style="color:#7aa2ff">👋</span></h2><p class="auth-description">Sign in or create your account to keep your study progress and points synced across devices.<br><span class="ar">سجّل دخولك أو أنشئ حسابًا عشان نقاطك وتقدمك في المذاكرة يفضلوا محفوظين على كل أجهزتك.</span></p><label class="auth-field" for="authName"><span class="auth-label"><span>Full name</span><span class="ar">الاسم</span></span><span class="auth-input-wrap">'+ic('user','auth-field-icon')+'<input type="text" id="authName" maxlength="20" autocomplete="username" placeholder="Enter your name" value="'+esc(S.name||'')+'"></span></label><label class="auth-field" for="authPass"><span class="auth-label"><span>Password</span><span class="ar">كلمة المرور</span></span><span class="auth-input-wrap">'+ic('lock','auth-field-icon')+'<input type="password" id="authPass" minlength="4" autocomplete="current-password" placeholder="At least 4 characters"></span></label><div class="auth-hint">'+ic('info')+'<span>If the name is new, an account will be created. If it already exists, enter its password to sign in.<br><span class="ar">لو الاسم جديد هنعمل حساب، ولو مسجّل قبل كده اكتب كلمة المرور الخاصة بيه.</span></span></div><button class="btn auth-submit" id="authGo">Continue <span aria-hidden="true">→</span> <span class="ar">دخول / إنشاء حساب</span></button><div class="auth-footer">'+ic('shield-check')+' Your progress is synced automatically across devices</div></div>');
     $('#authGo').onclick=enterAccount;$('#authPass').onkeydown=e=>{if(e.key==='Enter')enterAccount();};setTimeout(()=>$('#authName').focus(),50);
   }
 }
@@ -1583,7 +1561,7 @@ ACT.chacc=async function(el){
     await DB.req('DELETE','/inbox/'+S.uid+'/'+n.id);NOTES=NOTES.filter(x=>x.id!==n.id);paintBell();
     if(!r||r.status!=='lobby'){modal('');toast('<div>This challenge expired · التحدي انتهى</div>',3000);return;}
     await DB.put('/rooms/'+n.code+'/players/'+S.uid,{name:S.name||'Player',seen:{'.sv':'timestamp'},j:{'.sv':'timestamp'},pts:0,ans:0,cor:0});
-    await DB.put('/inbox/'+n.from+'/a'+Date.now().toString(36),{type:'accepted',from:S.uid,fromName:S.name||'Player',ts:Date.now()});
+    await DB.put('/inbox/'+n.from+'/a'+Date.now().toString(36),{type:'accepted',fromName:S.name||'Player',ts:Date.now()});
     modal('');go('arena');enterRoom(n.code,false);
   }catch(e){toast('<div>Connection error</div>',2500);}
 };
@@ -1594,7 +1572,7 @@ ACT.chdec=async function(el){
     S.pts=Math.max(0,S.pts-10);if(S.week)S.week.p=Math.max(0,(S.week.p||0)-10);save();hdr();
     await DB.req('DELETE','/inbox/'+S.uid+'/'+n.id);NOTES=NOTES.filter(x=>x.id!==n.id);
     await DB.req('DELETE','/rooms/'+n.code).catch(()=>{});
-    await DB.put('/inbox/'+n.from+'/d'+Date.now().toString(36),{type:'declined',from:S.uid,fromName:S.name||'Player',ts:Date.now()});
+    await DB.put('/inbox/'+n.from+'/d'+Date.now().toString(36),{type:'declined',fromName:S.name||'Player',ts:Date.now()});
     await syncNow();paintBell();modal('');toast('<div>You declined and lost 10 pts · اتخصم منك 10 نقاط</div>',3500);
   }catch(e){toast('<div>Connection error</div>',2500);}
 };
