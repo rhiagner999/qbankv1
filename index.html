@@ -335,6 +335,10 @@ table{display:block;max-width:100%;overflow-x:auto}
   #main{max-width:1500px}
 }
 
+.gbtn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:48px;border-radius:13px;border:1px solid var(--border-2);background:#fff;color:#1f2937;font-weight:700;font-size:15px;cursor:pointer}
+.gbtn:hover{filter:brightness(.96)}.gbtn[disabled]{opacity:.55}
+.auth-or{display:flex;align-items:center;gap:10px;margin:14px 0;color:var(--muted);font-size:12px}.auth-or:before,.auth-or:after{content:"";flex:1;height:1px;background:var(--border)}
+.yeargrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}.yeargrid button{min-height:64px;border:1px solid var(--border-2);background:var(--surface-2);color:var(--text);border-radius:14px;font-weight:800;font-size:15px;cursor:pointer;padding:8px}.yeargrid button:hover{border-color:var(--primary);background:var(--surface-3)}.yeargrid small{display:block;color:var(--muted);font-weight:600}
 .chbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:16px 0 4px;padding:10px 12px;border:1px solid var(--border);background:var(--surface);border-radius:var(--r-md)}
 .chbar label{font-weight:700;font-size:13px;color:var(--muted);white-space:nowrap}
 .chbar select{flex:1;min-width:220px;max-width:100%;min-height:44px;background:var(--surface-2);color:var(--text);border:1px solid var(--border-2);border-radius:var(--r-md);padding:8px 12px;font:inherit;font-weight:700;font-size:14px;cursor:pointer}
@@ -1381,7 +1385,12 @@ const TOPICS2={trm:{en:'Pregnancy terminology',ar:'مصطلحات الحمل',ic
 Object.assign(TOPICS,TOPICS2);
 Object.assign(TOPICS,{gdc:{en:'Growth & development: concepts & stages',ar:'مفاهيم النمو والتطور ومراحله',ic:'📏'},nbi:{en:'Newborn & infant',ar:'حديث الولادة والرضيع',ic:'👶'},tps:{en:'Toddler & preschool',ar:'الطفل الصغير وما قبل المدرسة',ic:'🧒'},sch:{en:'School age & adolescence',ar:'سن المدرسة والمراهقة',ic:'🎒'},gdp:{en:'Principles, patterns & factors',ar:'المبادئ والأنماط والعوامل',ic:'🧩'}});
 Object.assign(TOPICS,{pdn:{en:'Pediatric nursing & roles',ar:'تمريض الأطفال وأدواره',ic:'👶'},hsp:{en:'Hospitalization',ar:'الاستشفاء',ic:'🏥'},sep:{en:'Separation anxiety',ar:'قلق الانفصال',ic:'💔'},pin:{en:'Nursing interventions',ar:'التدخلات التمريضية',ic:'🧸'}});
-const SUBJECTS={ob:{en:'Obstetrics & Gynecology',ar:'النسا والتوليد',ic:'🌸'},ped:{en:'Pediatric Nursing',ar:'تمريض الأطفال',ic:'👶'}};
+const SUBJECTS={ob:{yr:'y5',en:'Obstetrics & Gynecology',ar:'النسا والتوليد',ic:'🌸'},ped:{yr:'y5',en:'Pediatric Nursing',ar:'تمريض الأطفال',ic:'👶'}};
+function curYear(){return S.year||'y5';}
+function nextUnlock(at){const d=new Date(at||Date.now());let u=new Date(d.getFullYear(),5,1);if(d>=u)u=new Date(d.getFullYear()+1,5,1);return u;}
+function yearLocked(){return !!S.year&&Date.now()<nextUnlock(S.yearAt||Date.now()).getTime();}
+function setYear(y){S.year=y;S.yearAt=Date.now();save();if(DB.ok()&&S.uid)DB.patch('/players/'+S.uid,{year:y,yearAt:S.yearAt}).catch(()=>{});}
+function subjectsFor(y){return Object.keys(SUBJECTS).filter(s=>SUBJECTS[s].yr===(y||curYear()));}
 const CHAPTERS={1:{sub:'ob',en:'Chapter 1 · Reproductive system',ar:'الشابتر 1 · الجهاز التناسلي',topics:['ext','int','cyc','ov','nur','rh']},2:{sub:'ob',en:'Chapter 2 · Normal & abnormal pregnancy',ar:'الشابتر 2 · الحمل الطبيعي وغير الطبيعي',topics:['trm','sgn','phy','anc','hyg','htn','abo','apb','oth']},3:{sub:'ped',en:'Chapter 1 · Pediatric nursing perspectives',ar:'الشابتر 1 · منظورات تمريض الأطفال',topics:['pdn','hsp','sep','pin']},4:{sub:'ped',en:'Chapter 2 · Growth & development of children',ar:'الشابتر 2 · نمو وتطور الأطفال',topics:['gdc','nbi','tps','sch','gdp']}};
 DEF.forEach((r,i)=>ALL.push({id:'d'+i,t:'d',tp:r[0],q:r[1],qa:r[2],a:r[3],aa:r[4],kw:r[5],h:r[6]}));
 COMP.forEach((r,i)=>ALL.push({id:'c'+i,t:'c',tp:r[0],q:r[1],qa:r[2],a:r[3],aa:r[4],kw:r[5],h:r[6]}));
@@ -1398,18 +1407,24 @@ CMP2.forEach((r,i)=>ALL.push({id:'kx'+i,t:'x',tp:r.tp,tbl:r}));
 (function(){const c1=new Set(CHAPTERS[1].topics);for(let i=ALL.length-1;i>=0;i--){const q=ALL[i];if(c1.has(q.tp)&&q.id[0]!=='k')ALL.splice(i,1);}})();
 (function(){const seen=new Set();for(let i=0;i<ALL.length;i++){const q=ALL[i];if(q.t==='x')continue;const k=q.t+'|'+q.q.trim().toLowerCase();if(seen.has(k)){ALL.splice(i,1);i--;}else seen.add(k);}})();
 const BYID={};ALL.forEach(q=>BYID[q.id]=q);
-function chTopics(){const c=CHAPTERS[S.ch]||CHAPTERS[1];return c.topics.filter(k=>ALL.some(q=>q.tp===k));}
+function chTopics(){const c=CHAPTERS[S.ch]||CHAPTERS[1];if(!subjectsFor().includes(c.sub))return [];return c.topics.filter(k=>ALL.some(q=>q.tp===k));}
 function chPool(){const t=chTopics();return ALL.filter(q=>t.includes(q.tp));}
 function chCount(n){return ALL.filter(q=>CHAPTERS[n].topics.includes(q.tp)).length;}
 function subChapters(s){return Object.keys(CHAPTERS).filter(n=>CHAPTERS[n].sub===s);}
-function subPool(){const t=new Set();subChapters(S.sub).forEach(n=>CHAPTERS[n].topics.forEach(k=>t.add(k)));return ALL.filter(q=>t.has(q.tp));}
+function subPool(){if(!subjectsFor().includes(S.sub))return [];const t=new Set();subChapters(S.sub).forEach(n=>CHAPTERS[n].topics.forEach(k=>t.add(k)));return ALL.filter(q=>t.has(q.tp));}
 function chLabel(n){const same=subChapters(CHAPTERS[n].sub);const i=same.indexOf(String(n))+1;return CHAPTERS[n].en.replace(/Chapter \d+/,'Chapter '+i)+' — '+CHAPTERS[n].ar.replace(/الشابتر \d+/,'الشابتر '+i)+' ('+chCount(n)+')';}
-function chSelect(){return '<div class="chbar"><label for="subsel">🎓 Subject · المادة</label><select id="subsel" data-subsel>'+Object.keys(SUBJECTS).map(s=>'<option value="'+s+'"'+(S.sub===s?' selected':'')+'>'+SUBJECTS[s].ic+' '+SUBJECTS[s].en+' — '+SUBJECTS[s].ar+'</option>').join('')+'</select><label for="chsel">📚 Chapter · الشابتر</label><select id="chsel" data-chsel>'+subChapters(S.sub).map(n=>'<option value="'+n+'"'+(+S.ch===+n?' selected':'')+'>'+chLabel(n)+'</option>').join('')+'</select></div>';}
+function chSelect(){
+  const y=curYear(),subs=subjectsFor(y);
+  const yo=YEARS.find(x=>x.k===y)||YEARS[3];
+  const yr='<label>🎓 Year · السنة</label><span class="chip on" style="font-weight:800">'+yo.en+' — '+yo.ar+(yearLocked()?' 🔒':'')+'</span>'+(!yearLocked()?'<button class="btn ghost sm" data-act="yearchg">Change year · غيّر السنة</button>':'');
+  if(!subs.length)return '<div class="chbar">'+yr+'<div class="sub" style="flex-basis:100%">No subjects for this year yet — coming soon. · لسه مفيش مواد للسنة دي، قريبًا.</div></div>';
+  return '<div class="chbar">'+yr+'<label for="subsel">📖 Subject · المادة</label><select id="subsel" data-subsel>'+subs.map(s=>'<option value="'+s+'"'+(S.sub===s?' selected':'')+'>'+SUBJECTS[s].ic+' '+SUBJECTS[s].en+' — '+SUBJECTS[s].ar+'</option>').join('')+'</select><label for="chsel">📚 Chapter · الشابتر</label><select id="chsel" data-chsel>'+subChapters(S.sub).map(n=>'<option value="'+n+'"'+(+S.ch===+n?' selected':'')+'>'+chLabel(n)+'</option>').join('')+'</select></div>';
+}
 
 /* ================= حالة محفوظة ================= */
 const DEFAULT_DB='https://qabank-6f97a-default-rtdb.firebaseio.com';
 const K2='rhqb_v2',K1='rhqb_v1';
-const defState=()=>({pts:0,streak:0,last:'',ans:0,cor:0,secs:0,q:{},sess:[],theme:'dark',cfg:null,name:'',uid:'',accountKey:'',db:DEFAULT_DB==='__DB__'?'':DEFAULT_DB,days:{},week:{k:'',p:0},ar:true,duas:true,rooms:[],bell:0,ch:1,sub:'ob'});
+const defState=()=>({pts:0,streak:0,last:'',ans:0,cor:0,secs:0,q:{},sess:[],theme:'dark',cfg:null,name:'',uid:'',accountKey:'',year:'',yearAt:0,db:DEFAULT_DB==='__DB__'?'':DEFAULT_DB,days:{},week:{k:'',p:0},ar:true,duas:true,rooms:[],bell:0,ch:1,sub:'ob'});
 let S=defState();
 try{const raw=localStorage.getItem(K2)||localStorage.getItem(K1);if(raw)S=Object.assign(defState(),JSON.parse(raw));}catch(e){}
 // Use one shared Firebase project on local HTML and GitHub Pages.
@@ -1508,6 +1523,7 @@ async function syncIdentity(){
     if(remoteUid!==S.uid)S.uid=remoteUid;
     const remote=await DB.get('/players/'+S.uid);
     if(remote){
+      if(remote.year&&YEARS.some(y=>y.k===remote.year)){S.year=remote.year;S.yearAt=Number(remote.yearAt)||S.yearAt||Date.now();}
       S.pts=Math.max(Number(S.pts)||0,Number(remote.pts)||0);
       S.ans=Math.max(Number(S.ans)||0,Number(remote.ans)||0);
       S.cor=Math.max(Number(S.cor)||0,Number(remote.cor)||0);
@@ -1515,6 +1531,7 @@ async function syncIdentity(){
       if(remote.wk===wk)S.week={k:wk,p:Math.max(Number(S.week?.k===wk?S.week.p:0)||0,Number(remote.wp)||0)};
       else if(S.week?.k!==wk)S.week={k:wk,p:0};
     }
+    if(S.year&&!(remote&&remote.year))DB.patch('/players/'+S.uid,{year:S.year,yearAt:S.yearAt||Date.now()}).catch(()=>{});
     identityReady=true;save();
   }catch(e){identityReady=false;}finally{identityBusy=false;}
 }
@@ -1525,7 +1542,7 @@ async function passwordDigest(password){
   // Fallback for local file previews; use the hosted HTTPS version for stronger hashing.
   let h=2166136261;for(const b of bytes){h^=b;h=Math.imul(h,16777619);}return 'local-'+(h>>>0).toString(16);
 }
-function resetProgressForAccount(){S.pts=0;S.streak=0;S.last='';S.ans=0;S.cor=0;S.secs=0;S.q={};S.sess=[];S.days={};S.week={k:weekKey(),p:0};}
+function resetProgressForAccount(){S.year='';S.yearAt=0;S.pts=0;S.streak=0;S.last='';S.ans=0;S.cor=0;S.secs=0;S.q={};S.sess=[];S.days={};S.week={k:weekKey(),p:0};}
 async function enterAccount(){
   const name=($('#authName')?.value||'').trim().slice(0,20),password=$('#authPass')?.value||'';
   if(name.length<2){toast('Enter a name with at least 2 characters · اكتب اسم من حرفين على الأقل');return;}
@@ -1548,9 +1565,10 @@ async function enterAccount(){
     if((previousAccount&&previousAccount!==key)||(previousName&&previousName.trim().toLowerCase()!==name.trim().toLowerCase())||(created&&!previousName)){resetProgressForAccount();}
     S.name=account.name||name;S.uid=account.uid;S.accountKey=key;identityReady=false;save();
     await syncIdentity();if(!identityReady)throw new Error('Could not load this account. Try again. · تعذر تحميل الحساب');
-    await syncNow();modal('');hdr();if(cur.v==='dashboard')VIEWS.dashboard();toast('Account ready — your points are synced across devices. · الحساب جاهز ونقاطك محفوظة');
+    await syncNow();modal('');hdr();if(cur.v==='dashboard')VIEWS.dashboard();toast('Account ready — your points are synced across devices. · الحساب جاهز ونقاطك محفوظة');if(!S.year){if(created)yearModal();else{setYear('y5');}}
   }catch(e){toast(esc(e.message||'Connection failed · فشل الاتصال'));if(btn){btn.disabled=false;btn.textContent='Continue / Create account · دخول / إنشاء حساب';}}
 }
+
 async function syncNow(){if(!DB.ok())return;try{
   const wk=weekKey();if(!S.week||S.week.k!==wk)S.week={k:wk,p:0};
   if(S.name&&!identityReady)await syncIdentity();
@@ -1614,6 +1632,96 @@ function go(v,a){
   hdr();(VIEWS[v]||VIEWS.dashboard)(a);
 }
 const ACT={};
+/* ================= تسجيل الدخول بـ Google + Onboarding ================= */
+const FBCFG={apiKey:'AIzaSyBc86nkjNXZuACMlw3UcpZdCOFdJUdt6Oo',authDomain:'qabank-6f97a.firebaseapp.com',projectId:'qabank-6f97a'};
+const YEARS=[{k:'y1',en:'1st year',ar:'الفرقة الأولى'},{k:'y2',en:'2nd year',ar:'الفرقة الثانية'},{k:'y3',en:'3rd year',ar:'الفرقة الثالثة'},{k:'y5',en:'5th year',ar:'الفرقة الخامسة'}];
+function loadScript(src){return new Promise((res,rej)=>{const s=document.createElement('script');s.src=src;s.onload=res;s.onerror=()=>rej(new Error('script-load'));document.head.appendChild(s);});}
+let FBA=null,GU=null;
+async function fbAuth(){
+  if(FBA)return FBA;
+  if(!window.firebase){await loadScript('https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js');await loadScript('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js');}
+  if(!firebase.apps.length)firebase.initializeApp(FBCFG);
+  FBA=firebase.auth();return FBA;
+}
+function inAppBrowser(){return /FBAN|FBAV|FB_IAB|Instagram|Telegram|MicroMessenger|Snapchat|TikTok|; wv\)/i.test(navigator.userAgent);}
+function gErr(e){
+  const c=e&&e.code||'';
+  if(c==='auth/popup-closed-by-user'||c==='auth/cancelled-popup-request')return '';
+  if(c==='auth/unauthorized-domain')return 'This site domain is not authorized in Firebase (Authentication > Settings > Authorized domains). · الدومين مش مضاف في Firebase';
+  if(c==='auth/operation-not-allowed')return 'Google sign-in is not enabled in Firebase yet. · لازم تفعّل Google من Firebase';
+  if(c==='auth/popup-blocked')return 'Popup blocked. Allow popups and try again. · المتصفح منع النافذة';
+  if(c==='auth/network-request-failed'||(e&&e.message==='script-load'))return 'Network problem. Check your connection. · مشكلة في الاتصال';
+  return (e&&e.message)||'Google sign-in failed · فشل الدخول بجوجل';
+}
+async function googleLogin(){
+  if(inAppBrowser()){toast('Google sign-in does not work inside this app browser. Open the link in Chrome or Safari. · افتح الرابط في Chrome أو Safari',6000);return;}
+  if(!DB.ok()){toast('Cannot connect to the shared database. · تعذر الاتصال بقاعدة البيانات');return;}
+  const btn=$('#gGo');if(btn)btn.disabled=true;
+  try{
+    const auth=await fbAuth();
+    const prov=new firebase.auth.GoogleAuthProvider();prov.setCustomParameters({prompt:'select_account'});
+    const r=await auth.signInWithPopup(prov);
+    GU={uid:r.user.uid,name:r.user.displayName||''};
+    const rec=await DB.get('/google/'+GU.uid);
+    if(rec&&rec.accountKey&&await DB.get('/accounts/'+rec.accountKey)){await finishLogin(rec.accountKey);return;}
+    linkModal();
+  }catch(e){const m=gErr(e);if(m)toast(esc(m),5000);if(btn)btn.disabled=false;}
+}
+async function finishLogin(key,isNew){
+  const account=await DB.get('/accounts/'+key);if(!account)throw new Error('Account missing');
+  if(S.accountKey&&S.accountKey!==key)resetProgressForAccount();
+  else if(!S.accountKey&&S.name&&S.name.trim().toLowerCase()!==String(account.name).trim().toLowerCase())resetProgressForAccount();
+  S.name=account.name;S.uid=account.uid;S.accountKey=key;identityReady=false;save();
+  await syncIdentity();if(!identityReady)throw new Error('Could not load this account · تعذر تحميل الحساب');
+  await syncNow();modal('');hdr();go(cur.v,cur.a);
+  if(!S.year){if(isNew)yearModal();else{setYear('y5');toast('Signed in with Google — your points are synced. · تم الدخول وحسابك جاهز');}}else toast('Signed in with Google — your points are synced. · تم الدخول وحسابك جاهز');
+}
+function linkModal(mode){
+  mode=mode||'choose';
+  const head='<div class="auth-panel"><div class="auth-brand"><div class="auth-brand-icon">'+ic('logo')+'</div><div><div class="auth-brand-name">RH Q-BANK</div><div class="auth-brand-sub">'+esc(GU&&GU.name||'')+'</div></div></div>';
+  if(mode==='choose'){
+    modal(head+'<h2 class="auth-title">Welcome 👋</h2><p class="auth-description">Do you already have an account with a name and password?<br><span class="ar">عندك حساب قديم بالاسم وكلمة المرور؟ اربطه بجوجل عشان نقاطك تفضل.</span></p><button class="btn auth-submit" data-act="lkold">Yes, link my old account · عندي حساب قديم</button><div class="auth-or">or · أو</div><button class="btn ghost auth-submit" data-act="lknew">No, create a new account · حساب جديد</button></div>');
+  }else if(mode==='old'){
+    modal(head+'<h2 class="auth-title">Link old account · ربط الحساب القديم</h2><p class="auth-description">Enter your old name and password once. Next time Google is enough.<br><span class="ar">اكتب اسمك وكلمة المرور القديمة مرة واحدة بس، وبعدها جوجل كفاية.</span></p><label class="auth-field"><span class="auth-label"><span>Old name</span><span class="ar">الاسم القديم</span></span><span class="auth-input-wrap">'+ic('user','auth-field-icon')+'<input type="text" id="lkName" maxlength="20" autocomplete="off"></span></label><label class="auth-field"><span class="auth-label"><span>Old password</span><span class="ar">كلمة المرور القديمة</span></span><span class="auth-input-wrap">'+ic('lock','auth-field-icon')+'<input type="password" id="lkPass" autocomplete="off"></span></label><button class="btn auth-submit" id="lkGo" data-act="lkgo">Link account · اربط الحساب</button><button class="btn ghost auth-submit" style="margin-top:8px" data-act="lkback">Back · رجوع</button></div>');
+  }else{
+    modal(head+'<h2 class="auth-title">New account · حساب جديد</h2><p class="auth-description">Choose the name shown on the leaderboard.<br><span class="ar">اختار الاسم اللي هيظهر في لوحة المتصدرين.</span></p><label class="auth-field"><span class="auth-label"><span>Display name</span><span class="ar">الاسم</span></span><span class="auth-input-wrap">'+ic('user','auth-field-icon')+'<input type="text" id="lkName" maxlength="20" value="'+esc((GU&&GU.name||'').slice(0,20))+'"></span></label><button class="btn auth-submit" id="lkGo" data-act="lkcreate">Create account · إنشاء الحساب</button><button class="btn ghost auth-submit" style="margin-top:8px" data-act="lkback">Back · رجوع</button></div>');
+  }
+}
+ACT.lkold=()=>linkModal('old');ACT.lknew=()=>linkModal('new');ACT.lkback=()=>linkModal('choose');
+ACT.lkgo=async function(){
+  const name=($('#lkName').value||'').trim().slice(0,20),pass=$('#lkPass').value||'';
+  if(name.length<2||!pass){toast('Enter your old name and password · اكتب الاسم والباسورد');return;}
+  const b=$('#lkGo');b.disabled=true;
+  try{
+    const key=accountKeyOf(name),acc=await DB.get('/accounts/'+key);
+    if(!acc)throw new Error('No account with this name · مفيش حساب بالاسم ده');
+    if(acc.passHash!==await passwordDigest(pass))throw new Error('Wrong password · كلمة المرور غلط');
+    if(acc.google&&acc.google!==GU.uid)throw new Error('This account is already linked to another Google account · الحساب ده مربوط بجوجل تاني');
+    await DB.patch('/accounts/'+key,{google:GU.uid});
+    await DB.put('/google/'+GU.uid,{accountKey:key,uid:acc.uid,t:Date.now()});
+    await finishLogin(key);
+  }catch(e){toast(esc(e.message||'Failed'),4000);b.disabled=false;}
+};
+ACT.lkcreate=async function(){
+  const name=($('#lkName').value||'').trim().slice(0,20);
+  if(name.length<2){toast('Name must be at least 2 characters · الاسم حرفين على الأقل');return;}
+  const b=$('#lkGo');b.disabled=true;
+  try{
+    const key=accountKeyOf(name);if(!key)throw new Error('Choose a different name');
+    if(await DB.get('/accounts/'+key))throw new Error('This name is taken. If it is your old account, go back and link it. · الاسم مستخدم، لو ده حسابك القديم ارجع واربطه');
+    const uid='u'+Math.random().toString(36).slice(2,10)+Date.now().toString(36).slice(-4);
+    await DB.put('/accounts/'+key,{name,uid,passHash:'google-only',google:GU.uid,createdAt:Date.now()});
+    await DB.put('/google/'+GU.uid,{accountKey:key,uid:uid,t:Date.now()});
+    await DB.put('/nameIndex/'+nameKey(name),{uid:uid,name:name});
+    resetProgressForAccount();await finishLogin(key,true);
+  }catch(e){toast(esc(e.message||'Failed'),4500);b.disabled=false;}
+};
+function yearModal(){
+  modal('<div class="auth-panel"><div class="auth-brand"><div class="auth-brand-icon">'+ic('logo')+'</div><div><div class="auth-brand-name">RH Q-BANK</div><div class="auth-brand-sub">Onboarding</div></div></div><h2 class="auth-title">Which academic year are you in? 🎓</h2><p class="auth-description"><span class="ar">اختار سنتك الدراسية.</span></p><div class="yeargrid">'+YEARS.map(y=>'<button data-act="year" data-k="'+y.k+'">'+y.en+'<small class="ar">'+y.ar+'</small></button>').join('')+'</div></div>');
+}
+ACT.year=function(el){if(S.year&&yearLocked())return;setYear(el.dataset.k);modal('');cfg.topics=new Set(chTopics());RCFG.topics=new Set(chTopics());saveCfg();toast('Saved. Welcome! · تم الحفظ، أهلاً بيك');go(cur.v,cur.a);};
+ACT.yearchg=function(){if(!yearLocked())yearModal();};
+
 document.addEventListener('change',e=>{
   const sel=e.target.closest&&e.target.closest('[data-subsel]');
   const el=sel||(e.target.closest&&e.target.closest('[data-chsel]'));if(!el)return;
@@ -1826,7 +1934,7 @@ const CH_GAP=150;
 function lbRows(list,meUid,key,ch){const mi=list.findIndex(x=>x.uid===meUid);return list.map((p,i)=>'<div class="lrow'+(p.uid===meUid?' me':'')+(i===0?' top':'')+'"><span class="rank r'+(i<3?i+1:'')+'">'+(i+1)+'</span>'+avatar(p.name,'',p.on===undefined?undefined:!!p.on)+'<div class="n">'+esc(p.name)+(i===0?ic('crown','crown'):'')+(p.uid===meUid?' <span class="tag">You</span>':'')+'<small>Level '+(p.lvl||lvlOf(p[key]||0))+(p.on===undefined?'':' · '+(p.on?'<span style="color:var(--ok)">Online</span>':'Offline'))+'</small></div><div class="p">'+(p[key]||0)+'<small>pts</small></div>'+(ch&&mi>0&&i===mi-1&&p.on&&(p.pts||0)-(list[mi].pts||0)<=CH_GAP?'<button class="btn sm" data-act="chal" data-u="'+esc(p.uid)+'" data-n="'+esc(p.name)+'">⚔ Challenge</button>':'')+'</div>').join('');}
 async function loadBoard(weekly){
   const o=await DB.get('/players')||{};
-  let l=Object.keys(o).map(k=>Object.assign({uid:k},o[k]));
+  let l=Object.keys(o).map(k=>Object.assign({uid:k},o[k])).filter(p=>(p.year||'y5')===curYear());
   const mx=Math.max(0,...l.map(p=>Number(p.seen)||0));l.forEach(p=>{p.on=p.uid===S.uid||(mx-(Number(p.seen)||0)<45000&&(Number(p.seen)||0)>0);});
   if(weekly){const wk=weekKey();l=l.map(p=>Object.assign(p,{v:p.wk===wk?(Number(p.wp)||0):0}));}else l.forEach(p=>p.v=p.pts||0);
   l.sort((a,b)=>(b.v-a.v)||(a.uid===S.uid?-1:b.uid===S.uid?1:((Number(b.upd)||0)-(Number(a.upd)||0))));return l.slice(0,10).map(p=>Object.assign(p,{pts:p.v}));
@@ -2108,9 +2216,10 @@ function boot(){
   go(h?'arena':'dashboard');
   if(S.name&&S.accountKey){identityReady=false;syncIdentity().then(()=>syncNow());}
   if(S.accountKey)syncSoon();
+  if(S.accountKey&&!YEARS.some(y=>y.k===S.year)){setYear('y5');}
   if(!S.accountKey){
-    modal('<div class="auth-panel"><div class="auth-brand"><div class="auth-brand-icon">'+ic('logo')+'</div><div><div class="auth-brand-name">RH Q-BANK</div><div class="auth-brand-sub">Reproductive Health · Question Bank</div></div></div><div class="auth-kicker">'+ic('shield','sm')+' SECURE ACCOUNT ACCESS</div><h2 class="auth-title">Welcome back <span style="color:#7aa2ff">👋</span></h2><p class="auth-description">Sign in or create your account to keep your study progress and points synced across devices.<br><span class="ar">سجّل دخولك أو أنشئ حسابًا عشان نقاطك وتقدمك في المذاكرة يفضلوا محفوظين على كل أجهزتك.</span></p><label class="auth-field" for="authName"><span class="auth-label"><span>Full name</span><span class="ar">الاسم</span></span><span class="auth-input-wrap">'+ic('user','auth-field-icon')+'<input type="text" id="authName" maxlength="20" autocomplete="username" placeholder="Enter your name" value="'+esc(S.name||'')+'"></span></label><label class="auth-field" for="authPass"><span class="auth-label"><span>Password</span><span class="ar">كلمة المرور</span></span><span class="auth-input-wrap">'+ic('lock','auth-field-icon')+'<input type="password" id="authPass" minlength="4" autocomplete="current-password" placeholder="At least 4 characters"></span></label><div class="auth-hint">'+ic('info')+'<span>If the name is new, an account will be created. If it already exists, enter its password to sign in.<br><span class="ar">لو الاسم جديد هنعمل حساب، ولو مسجّل قبل كده اكتب كلمة المرور الخاصة بيه.</span></span></div><button class="btn auth-submit" id="authGo">Continue <span aria-hidden="true">→</span> <span class="ar">دخول / إنشاء حساب</span></button><div class="auth-footer">'+ic('shield-check')+' Your progress is synced automatically across devices</div></div>');
-    $('#authGo').onclick=enterAccount;$('#authPass').onkeydown=e=>{if(e.key==='Enter')enterAccount();};setTimeout(()=>$('#authName').focus(),50);
+    modal('<div class="auth-panel"><div class="auth-brand"><div class="auth-brand-icon">'+ic('logo')+'</div><div><div class="auth-brand-name">RH Q-BANK</div><div class="auth-brand-sub">Reproductive Health · Question Bank</div></div></div><div class="auth-kicker">'+ic('shield','sm')+' SECURE ACCOUNT ACCESS</div><h2 class="auth-title">Welcome back <span style="color:#7aa2ff">👋</span></h2><p class="auth-description">Sign in or create your account to keep your study progress and points synced across devices.<br><span class="ar">سجّل دخولك أو أنشئ حسابًا عشان نقاطك وتقدمك في المذاكرة يفضلوا محفوظين على كل أجهزتك.</span></p><button class="gbtn" id="gGo" type="button"><svg width="20" height="20" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.6 5.9c4.4-4.1 7-10.1 7-17.6z"/><path fill="#FBBC05" d="M10.5 28.7a14.5 14.5 0 010-9.4l-7.9-6.1a24 24 0 000 21.6l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.6-5.9c-2.1 1.4-4.9 2.3-8.3 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.1C6.5 42.6 14.6 48 24 48z"/></svg>Continue with Google · الدخول بجوجل</button><div class="auth-or">or use name &amp; password · أو بالاسم والباسورد</div><label class="auth-field" for="authName"><span class="auth-label"><span>Full name</span><span class="ar">الاسم</span></span><span class="auth-input-wrap">'+ic('user','auth-field-icon')+'<input type="text" id="authName" maxlength="20" autocomplete="username" placeholder="Enter your name" value="'+esc(S.name||'')+'"></span></label><label class="auth-field" for="authPass"><span class="auth-label"><span>Password</span><span class="ar">كلمة المرور</span></span><span class="auth-input-wrap">'+ic('lock','auth-field-icon')+'<input type="password" id="authPass" minlength="4" autocomplete="current-password" placeholder="At least 4 characters"></span></label><div class="auth-hint">'+ic('info')+'<span>If the name is new, an account will be created. If it already exists, enter its password to sign in.<br><span class="ar">لو الاسم جديد هنعمل حساب، ولو مسجّل قبل كده اكتب كلمة المرور الخاصة بيه.</span></span></div><button class="btn auth-submit" id="authGo">Continue <span aria-hidden="true">→</span> <span class="ar">دخول / إنشاء حساب</span></button><div class="auth-footer">'+ic('shield-check')+' Your progress is synced automatically across devices</div></div>');
+    $('#authGo').onclick=enterAccount;$('#gGo').onclick=googleLogin;$('#authPass').onkeydown=e=>{if(e.key==='Enter')enterAccount();};setTimeout(()=>$('#authName').focus(),50);
   }
 }
 /* ================= التحديات والإشعارات ================= */
@@ -2141,7 +2250,7 @@ function chpPool(){const s=CHP.sub,c=CHP.ch;const ns=c==='all'?subChapters(s):[c
 function chpModal(){
   const chs=subChapters(CHP.sub);
   modal('<div class="card"><h2>⚔ Challenge '+esc(CHP.name)+'</h2><div class="sub">Pick the subject and module · اختار المادة والموديول</div>'+
-  '<div class="mt2"><label class="sub">🎓 Subject · المادة</label><select data-chp="sub">'+Object.keys(SUBJECTS).map(s=>'<option value="'+s+'"'+(CHP.sub===s?' selected':'')+'>'+SUBJECTS[s].ic+' '+SUBJECTS[s].en+' — '+SUBJECTS[s].ar+'</option>').join('')+'</select></div>'+
+  '<div class="mt2"><label class="sub">🎓 Subject · المادة</label><select data-chp="sub">'+subjectsFor().map(s=>'<option value="'+s+'"'+(CHP.sub===s?' selected':'')+'>'+SUBJECTS[s].ic+' '+SUBJECTS[s].en+' — '+SUBJECTS[s].ar+'</option>').join('')+'</select></div>'+
   '<div class="mt"><label class="sub">📚 Module · الموديول</label><select data-chp="ch"><option value="all"'+(CHP.ch==='all'?' selected':'')+'>All chapters · كل الشباتر</option>'+chs.map(n=>'<option value="'+n+'"'+(String(CHP.ch)===String(n)?' selected':'')+'>'+chLabel(n)+'</option>').join('')+'</select></div>'+
   '<div class="row sb mt2"><div><b>Arabic translation · الترجمة العربية</b><div class="sub">Show Arabic under each question · إظهار العربي</div></div><button class="toggle'+(CHP.ar?' on':'')+'" data-act="chpar" aria-label="Arabic"></button></div>'+
   '<div class="sub mt">'+chpPool().length+' questions available · declining costs them 10 pts · لو رفض هيتخصم منه 10 نقاط</div>'+
@@ -2150,7 +2259,7 @@ function chpModal(){
 document.addEventListener('change',e=>{const el=e.target.closest&&e.target.closest('[data-chp]');if(!el||!CHP)return;if(el.dataset.chp==='sub'){CHP.sub=el.value;CHP.ch='all';}else CHP.ch=el.value;chpModal();});
 ACT.chpar=function(){CHP.ar=!CHP.ar;chpModal();};
 ACT.chpx=function(){CHP=null;modal('');};
-ACT.chal=function(el){CHP={uid:el.dataset.u,name:el.dataset.n,sub:S.sub,ch:'all',ar:true};chpModal();};
+ACT.chal=function(el){if(!subjectsFor().length){toast('No subjects for your year yet · لسه مفيش مواد لسنتك');return;}CHP={uid:el.dataset.u,name:el.dataset.n,sub:S.sub,ch:'all',ar:true};chpModal();};
 ACT.chpgo=async function(el){
   const uid=CHP.uid,name=CHP.name;
   el.disabled=true;
