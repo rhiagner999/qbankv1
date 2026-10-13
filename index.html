@@ -206,7 +206,7 @@ table.cmp .a2{display:block;color:var(--muted);font-size:12.5px;margin-top:3px}
 .sk{height:14px;border-radius:8px;background:linear-gradient(90deg,var(--surface-3),var(--surface-2),var(--surface-3));background-size:200% 100%;animation:sk 1.3s infinite}
 @keyframes sk{to{background-position:-200% 0}}
 /* ---- toast / modal ---- */
-#toast{position:fixed;top:14px;left:50%;transform:translate(-50%,-160%);width:min(94vw,540px);z-index:400;background:linear-gradient(135deg,rgba(23,40,84,.96),rgba(14,22,48,.96));border:1px solid rgba(47,107,255,.5);color:#eaf0ff;border-radius:var(--r-lg);padding:14px 16px;box-shadow:0 18px 50px -12px rgba(0,0,0,.7),0 0 0 1px rgba(47,107,255,.15);backdrop-filter:blur(14px);transition:transform .5s cubic-bezier(.2,.9,.3,1.15);direction:rtl;text-align:right;font-size:16px;line-height:1.75}
+#toast{position:fixed;top:14px;left:50%;transform:translate(-50%,-160%);width:min(94vw,540px);z-index:200;background:linear-gradient(135deg,rgba(23,40,84,.96),rgba(14,22,48,.96));border:1px solid rgba(47,107,255,.5);color:#eaf0ff;border-radius:var(--r-lg);padding:14px 16px;box-shadow:0 18px 50px -12px rgba(0,0,0,.7),0 0 0 1px rgba(47,107,255,.15);backdrop-filter:blur(14px);transition:transform .5s cubic-bezier(.2,.9,.3,1.15);direction:rtl;text-align:right;font-size:16px;line-height:1.75}
 #toast.show{transform:translate(-50%,0)}
 #toast small{display:block;opacity:.65;font-size:11.5px;margin-top:4px}
 #modal:not(:empty){position:fixed;inset:0;z-index:300;background:rgba(3,6,14,.7);backdrop-filter:blur(6px);display:grid;place-items:center;padding:16px}
@@ -335,6 +335,25 @@ table{display:block;max-width:100%;overflow-x:auto}
   #main{max-width:1500px}
 }
 
+.micbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:10px}
+.mic{position:relative;display:inline-flex;align-items:center;gap:10px;min-height:50px;padding:0 20px 0 8px;border-radius:99px;border:1px solid var(--border-2);background:linear-gradient(135deg,var(--surface-2),var(--surface-3));color:var(--text);font-weight:800;font-size:14.5px;cursor:pointer;transition:border-color .2s,background .2s,transform .15s;overflow:hidden}
+.mic:hover{border-color:var(--primary);transform:translateY(-1px)}
+.mic .micico{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,#3b82f6,#6366f1);color:#fff;flex:none;transition:background .2s}
+.mic .micico svg{width:18px;height:18px}
+.mic .wave{display:none;align-items:center;gap:3px;height:22px}
+.mic .wave i{display:block;width:3px;height:6px;border-radius:3px;background:#ef4444;animation:micwv .9s ease-in-out infinite}
+.mic .wave i:nth-child(2){animation-delay:.12s}.mic .wave i:nth-child(3){animation-delay:.24s}.mic .wave i:nth-child(4){animation-delay:.36s}.mic .wave i:nth-child(5){animation-delay:.48s}
+.mic.on{border-color:#ef4444;background:linear-gradient(135deg,rgba(239,68,68,.22),rgba(239,68,68,.06))}
+.mic.on .micico{background:linear-gradient(135deg,#ef4444,#f97316);animation:micpulse 1.4s ease-out infinite}
+.mic.on .wave{display:inline-flex}
+.mic .micstop{display:none}.mic.on .micstop{display:inline}.mic.on .micgo{display:none}
+.micseg{display:inline-flex;border:1px solid var(--border-2);border-radius:99px;padding:3px;background:var(--surface-2)}
+.micseg button{border:0;background:transparent;color:var(--muted);font-weight:800;font-size:12.5px;padding:7px 12px;border-radius:99px;cursor:pointer}
+.micseg button.on{background:var(--primary);color:var(--bd-ink,#fff)}
+textarea.listening{border-color:#ef4444!important;box-shadow:0 0 0 3px rgba(239,68,68,.18)!important}
+@keyframes micwv{0%,100%{height:5px}50%{height:22px}}
+@keyframes micpulse{0%{box-shadow:0 0 0 0 rgba(239,68,68,.55)}100%{box-shadow:0 0 0 14px rgba(239,68,68,0)}}
+@media (prefers-reduced-motion:reduce){.mic .wave i,.mic.on .micico{animation:none}}
 .gbtn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:48px;border-radius:13px;border:1px solid var(--border-2);background:#fff;color:#1f2937;font-weight:700;font-size:15px;cursor:pointer}
 .gbtn:hover{filter:brightness(.96)}.gbtn[disabled]{opacity:.55}
 .auth-or{display:flex;align-items:center;gap:10px;margin:14px 0;color:var(--muted);font-size:12px}.auth-or:before,.auth-or:after{content:"";flex:1;height:1px;background:var(--border)}
@@ -1424,7 +1443,7 @@ function chSelect(){
 /* ================= حالة محفوظة ================= */
 const DEFAULT_DB='https://qabank-6f97a-default-rtdb.firebaseio.com';
 const K2='rhqb_v2',K1='rhqb_v1';
-const defState=()=>({pts:0,streak:0,last:'',ans:0,cor:0,secs:0,q:{},sess:[],theme:'dark',cfg:null,name:'',uid:'',accountKey:'',year:'',yearAt:0,db:DEFAULT_DB==='__DB__'?'':DEFAULT_DB,days:{},week:{k:'',p:0},ar:true,duas:true,rooms:[],bell:0,ch:1,sub:'ob'});
+const defState=()=>({pts:0,streak:0,last:'',ans:0,cor:0,secs:0,q:{},sess:[],theme:'dark',cfg:null,name:'',uid:'',accountKey:'',glinked:false,year:'',yearAt:0,db:DEFAULT_DB==='__DB__'?'':DEFAULT_DB,days:{},week:{k:'',p:0},ar:true,duas:true,rooms:[],bell:0,ch:1,sub:'ob'});
 let S=defState();
 try{const raw=localStorage.getItem(K2)||localStorage.getItem(K1);if(raw)S=Object.assign(defState(),JSON.parse(raw));}catch(e){}
 // Use one shared Firebase project on local HTML and GitHub Pages.
@@ -1508,7 +1527,7 @@ async function syncIdentity(){
     let remoteUid='';
     if(S.accountKey){
       const account=await DB.get('/accounts/'+S.accountKey);
-      if(account&&account.uid)remoteUid=account.uid;
+      if(account&&account.uid){remoteUid=account.uid;S.glinked=!!account.google;}
       else throw new Error('Account record missing');
     }else{
       const key=nameKey(S.name), indexed=await DB.get('/nameIndex/'+key);
@@ -1623,7 +1642,7 @@ function guard(){
   if(typeof roomGuard==='function'&&roomGuard())return true;
   return false;
 }
-function go(v,a){
+function go(v,a){stopMic();
   if(guard())return;ARENA_CREATE=false;
   stopTick();LEAVE.forEach(f=>{try{f();}catch(e){}});LEAVE.length=0;G=null;
   cur={v,a};$('#app').classList.remove('open');
@@ -1716,6 +1735,28 @@ ACT.lkcreate=async function(){
     resetProgressForAccount();await finishLogin(key,true);
   }catch(e){toast(esc(e.message||'Failed'),4500);b.disabled=false;}
 };
+function glinkCard(){
+  if(!S.accountKey)return '';
+  if(S.glinked)return '<div class="li"><div class="t"><b>Google account · حساب جوجل</b><span>Linked — you can sign in with Google · الحساب مربوط</span></div><span class="badge ok">✓ Linked</span></div>';
+  return '<div class="note" style="border-color:var(--warn,#f5a524)"><b>⚠ Link your account with Google · اربط حسابك بجوجل</b><br>Soon sign-in will be with Google only. Link now to keep your points.<br><span class="ar">قريبًا الدخول هيبقى بجوجل بس. اربط حسابك دلوقتي عشان نقاطك ما تضيعش.</span></div><button class="gbtn mt" data-act="glink" type="button">Link my account with Google · اربط حسابك بجوجل</button>';
+}
+function glinkBanner(){return (!S.accountKey||S.glinked)?'':'<div class="card mt2" style="border-color:rgba(245,165,36,.6)"><div class="row sb wrap"><div><b>⚠ Link your account with Google · اربط حسابك بجوجل</b><div class="sub">Sign-in will move to Google only soon. · الدخول قريبًا بجوجل بس.</div></div><button class="btn sm" data-act="glink">Link now · اربط الآن</button></div></div>';}
+ACT.glink=async function(el){
+  if(inAppBrowser()){toast('Google sign-in does not work inside this app browser. Open the link in Chrome or Safari. · افتح الرابط في Chrome أو Safari',6000);return;}
+  if(!S.accountKey||!DB.ok()){toast('Sign in first / check connection · سجّل دخولك الأول');return;}
+  if(el)el.disabled=true;
+  try{
+    const auth=await fbAuth();const prov=new firebase.auth.GoogleAuthProvider();prov.setCustomParameters({prompt:'select_account'});
+    const r=await auth.signInWithPopup(prov);const g=r.user.uid;
+    const acc=await DB.get('/accounts/'+S.accountKey);if(!acc)throw new Error('Account missing · الحساب مش موجود');
+    if(acc.google&&acc.google!==g)throw new Error('This account is already linked to a different Google account · الحساب ده مربوط بحساب جوجل تاني');
+    const rec=await DB.get('/google/'+g);
+    if(rec&&rec.accountKey&&rec.accountKey!==S.accountKey)throw new Error('This Google account is linked to another account · حساب جوجل ده مربوط بحساب تاني');
+    await DB.patch('/accounts/'+S.accountKey,{google:g});
+    await DB.put('/google/'+g,{accountKey:S.accountKey,uid:acc.uid,t:Date.now()});
+    S.glinked=true;save();toast('✅ Linked! Next time sign in with Google. · تم الربط، ادخل بجوجل المرة الجاية',5000);go(cur.v,cur.a);
+  }catch(e){const m=gErr(e);if(m)toast(esc(m),5000);if(el)el.disabled=false;}
+};
 function yearModal(){
   modal('<div class="auth-panel"><div class="auth-brand"><div class="auth-brand-icon">'+ic('logo')+'</div><div><div class="auth-brand-name">RH Q-BANK</div><div class="auth-brand-sub">Onboarding</div></div></div><h2 class="auth-title">Which academic year are you in? 🎓</h2><p class="auth-description"><span class="ar">اختار سنتك الدراسية.</span></p><div class="yeargrid">'+YEARS.map(y=>'<button data-act="year" data-k="'+y.k+'">'+y.en+'<small class="ar">'+y.ar+'</small></button>').join('')+'</div></div>');
 }
@@ -1794,7 +1835,7 @@ function renderQ(){
   '<div class="card mt2"><h3>Compact progress</h3><div class="dots">'+dots+'</div><div class="legend"><span><b style="background:var(--ok)"></b>Correct</span><span><b style="background:var(--bad)"></b>Wrong</span><span><b style="background:var(--primary)"></b>Current</span><span><b style="background:var(--surface-3)"></b>Pending</span></div></div></div>');
   const b=$('#body');
   if(q.t==='d'||q.t==='c'||q.t==='s'){
-    b.innerHTML='<textarea id="ta" rows="'+(q.t==='s'?8:q.t==='d'?4:3)+'" placeholder="Write your answer in English… · اكتب إجابتك بالإنجليزي"></textarea><div class="note ar" style="margin-top:6px">✍️ اكتب إجابتك بالإنجليزي — مش لازم نفس الكلمات بالحرف، المهم المعنى والكلمات المفتاحية.</div>';
+    b.innerHTML='<textarea id="ta" rows="'+(q.t==='s'?8:q.t==='d'?4:3)+'" placeholder="Write your answer in English… · اكتب إجابتك بالإنجليزي"></textarea><div class="note ar" style="margin-top:6px">✍️ اكتب إجابتك بالإنجليزي — مش لازم نفس الكلمات بالحرف، المهم المعنى والكلمات المفتاحية.</div>'+micMarkup();micWire();
   }else if(q.t==='m'){
     b.innerHTML=q.o.map((o,i)=>'<button class="opt" data-i="'+i+'"><span class="rd"></span><span class="tx"><b>'+String.fromCharCode(65+i)+') '+esc(o)+'</b><span class="ar ar-opt">'+esc(q.oa[i])+'</span></span></button>').join('');
     b.querySelectorAll('.opt').forEach(x=>x.onclick=()=>{if(G.cur.done)return;G.cur.sel=+x.dataset.i;b.querySelectorAll('.opt').forEach(y=>y.classList.toggle('sel',y===x));$('#chk').disabled=false;});
@@ -1847,7 +1888,37 @@ function evalQ(q,c){
   if(q.t==='x'){let ok=0;q.rows.forEach((r,i)=>{if(c.xs[i]===r.c)ok++;});return {ratio:ok/q.rows.length,yours:''};}
   const txt=$('#ta').value;const g=grade(txt,q.kw);return {ratio:g.ratio,g,yours:txt};
 }
+
+/* ================= الإجابة بالصوت ================= */
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+let MIC=null;
+function micSupported(){return !!SR&&!inAppBrowser();}
+function stopMic(){if(MIC){const m=MIC;MIC=null;try{m.rec.onend=null;m.rec.stop();}catch(e){}const b=$('#mic'),ta=$('#ta');if(b){b.classList.remove('on');b.setAttribute('aria-pressed','false');}if(ta)ta.classList.remove('listening');}}
+function micMarkup(){
+  if(!micSupported())return '';
+  const ar=(S.mlang==='ar-EG');
+  return '<div class="micbar"><button class="mic" id="mic" type="button" aria-pressed="false"><span class="micico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v4"/></svg></span><span class="micgo">Speak your answer · قول إجابتك</span><span class="micstop">Listening… · بسمعك (اضغط للإيقاف)</span><span class="wave"><i></i><i></i><i></i><i></i><i></i></span></button><div class="micseg" role="group" aria-label="Language"><button type="button" data-mlang="en-US" class="'+(ar?'':'on')+'">EN</button><button type="button" data-mlang="ar-EG" class="'+(ar?'on':'')+'">عربي</button></div></div>';
+}
+function micWire(){
+  const b=$('#mic');if(!b)return;
+  document.querySelectorAll('[data-mlang]').forEach(x=>x.onclick=()=>{stopMic();S.mlang=x.dataset.mlang;save();document.querySelectorAll('[data-mlang]').forEach(y=>y.classList.toggle('on',y===x));});
+  b.onclick=()=>{
+    if(G&&G.cur&&G.cur.done)return;
+    if(MIC){stopMic();return;}
+    const ta=$('#ta');if(!ta)return;
+    const rec=new SR();rec.lang=S.mlang||'en-US';rec.continuous=true;rec.interimResults=true;rec.maxAlternatives=1;
+    const base=ta.value.replace(/\s+$/,'');
+    rec.onresult=e=>{const t=Array.from(e.results).map(r=>r[0].transcript).join(' ').replace(/\s+/g,' ').trim();ta.value=(base?base+' ':'')+t;};
+    rec.onerror=e=>{const c=e.error;stopMic();
+      if(c==='not-allowed'||c==='service-not-allowed')toast('Microphone permission is blocked. Allow it from the browser site settings. · الميكروفون متقفل، اسمح بيه من إعدادات المتصفح',5000);
+      else if(c==='network')toast('Voice needs an internet connection. · الصوت محتاج إنترنت',4000);
+      else if(c==='audio-capture')toast('No microphone found. · مفيش ميكروفون',4000);};
+    rec.onend=()=>{if(MIC&&MIC.rec===rec)stopMic();};
+    try{rec.start();MIC={rec};b.classList.add('on');b.setAttribute('aria-pressed','true');ta.classList.add('listening');}catch(err){MIC=null;}
+  };
+}
 function check(){
+  stopMic();
   const c=G.cur,q=c.q;if(c.done)return;
   const exam=G.mode==='exam';
   if((q.t==='d'||q.t==='c'||q.t==='s')&&$('#ta').value.trim().length<3){const ta=$('#ta');ta.classList.add('shake');setTimeout(()=>ta.classList.remove('shake'),400);ta.focus();return;}
@@ -1864,7 +1935,7 @@ function check(){
 }
 function showAns(){
   const c=G.cur,q=c.q;if(c.done)return;
-  if(!confirm('تعرض الإجابة؟ السؤال هيتحسب غلط (0 نقطة) وهيرجع لك تاني.'))return;
+  if(!confirm('تعرض الإجابة؟ السؤال هيتحسب غلط (0 نقطة)'+(q.t==='s'?' وهيتضاف لأسئلة الأخطاء بس.':' وهيرجع لك تاني.')))return;
   finalizeQ(q,{ratio:0,yours:'(shown)'},false,0,true);
   showFeedback(q,{ratio:0,g:null},false,0,true);setDone();
 }
@@ -1876,7 +1947,7 @@ function finalizeQ(q,r,ok,earned,shown){
   G.st[G.i]=ok?'ok':'no';
   G.res.push({id:q.id,q:q,ok:ok,ratio:r.ratio,pts:earned,yours:r.yours,shown:shown,retry:!!G.retried[q.id]});
   const rc=G.retried[q.id]||0;
-  if(!ok&&G.mode==='review'&&rc<2){G.retried[q.id]=rc+1;const at=Math.min(G.queue.length,G.i+4);G.queue.splice(at,0,prepare(BYID[q.id]));G.st.splice(at,0,'p');}
+  if(!ok&&q.t!=='s'&&G.mode==='review'&&rc<2){G.retried[q.id]=rc+1;const at=Math.min(G.queue.length,G.i+4);G.queue.splice(at,0,prepare(BYID[q.id]));G.st.splice(at,0,'p');}
   save();hdr();
   G.pendingToast=()=>maybeToast(lvlOf(S.pts)>before);
 }
@@ -1908,9 +1979,9 @@ function showFeedback(q,r,ok,earned,shown){
   $('#fb').innerHTML=h;$('#hint').innerHTML='';
   if(G.pendingToast){const f=G.pendingToast;G.pendingToast=null;setTimeout(f,500);}
 }
-function next(){G.i++;if(G.i>=G.queue.length)finish(false);else renderQ();}
+function next(){stopMic();G.i++;if(G.i>=G.queue.length)finish(false);else renderQ();}
 
-function finish(timeUp){
+function finish(timeUp){stopMic();
   stopTick();
   const res=G.res;G.finished=true;
   const first=res.filter(r=>!r.retry);
@@ -1944,7 +2015,7 @@ ACT.subj=el=>{cfg.topics=new Set([el.dataset.k]);cfg.types=new Set(Object.keys(T
 VIEWS.dashboard=function(){
   const mis=mistakes().length;const todayP=(S.days[dkey()]||{}).p||0;
   main('<div class="fade"><div class="hero row sb wrap"><div><h1>Welcome back, '+esc(S.name||'Player')+' 👋</h1><div class="sub">Level '+lvlOf(S.pts)+' · '+S.pts+' pts<span class="ar ar-opt"> · أهلاً بيك، كمّل مذاكرتك</span></div></div><button class="btn big" data-go="study">'+ic('play','sm')+' Start Studying</button></div>'+
-  chSelect()+'<div class="grid g4 mt2">'+statCard('Total Points',S.pts,'star','Today +'+todayP)+statCard('Questions Answered',S.ans,'check',S.ans?Math.round(100*S.cor/S.ans)+'% accuracy':'—')+statCard('Day Streak',S.streak,'flame','days in a row')+statCard('Overall Mastery',overallMastery()+'%','target',chPool().filter(q=>mastered(q.id)).length+'/'+chPool().length)+'</div>'+
+  glinkBanner()+chSelect()+'<div class="grid g4 mt2">'+statCard('Total Points',S.pts,'star','Today +'+todayP)+statCard('Questions Answered',S.ans,'check',S.ans?Math.round(100*S.cor/S.ans)+'% accuracy':'—')+statCard('Day Streak',S.streak,'flame','days in a row')+statCard('Overall Mastery',overallMastery()+'%','target',chPool().filter(q=>mastered(q.id)).length+'/'+chPool().length)+'</div>'+
   '<div class="grid g21 mt2"><div class="card"><div class="row sb"><h3>Subject Mastery</h3><button class="btn ghost sm" data-go="subjects">View all</button></div><div class="grid g3 mt">'+chTopics().map(mastCard).join('')+'</div></div>'+
   '<div class="card"><div class="row sb"><h3>Top 10 Players</h3><button class="btn ghost sm" data-go="board">View all</button></div><div id="top10" class="mt"><div class="sk" style="height:200px"></div></div></div></div>'+
   '<div class="grid g2 mt2"><div class="card"><h3>Quick actions</h3><div class="grid g2 mt"><button class="btn ghost" data-act="qmis">🔁 Review mistakes ('+mis+')</button><button class="btn ghost" data-go="flash">'+ic('cards','sm')+' Flashcards</button><button class="btn ghost" data-go="arena">'+ic('users','sm')+' Friends Arena</button><button class="btn ghost" data-act="qexam">⏱ Quick exam (20)</button></div></div>'+
@@ -2014,7 +2085,7 @@ VIEWS.board=function(a){
 
 VIEWS.settings=function(){
   const row=(t,s,id,on)=>'<div class="li"><div class="t"><b>'+t+'</b><span>'+s+'</span></div><button class="toggle'+(on?' on':'')+'" data-act="'+id+'" aria-label="'+t+'"></button></div>';
-  main('<div class="fade"><h1>Settings</h1><div class="grid g2 mt2"><div class="card"><h3>Preferences</h3>'+row('Dark mode','Modern dark theme · الوضع الداكن','th',S.theme!=='light')+row('Arabic translation','Show Arabic under every item · الترجمة العربية','ar',S.ar)+row('Du\'a reminders','Every 5 answered questions · تذكير بالدعاء','du',S.duas)+
+  main('<div class="fade"><h1>Settings</h1><div class="card mt2"><h3>Google account · حساب جوجل</h3>'+glinkCard()+'</div><div class="grid g2 mt2"><div class="card"><h3>Preferences</h3>'+row('Dark mode','Modern dark theme · الوضع الداكن','th',S.theme!=='light')+row('Arabic translation','Show Arabic under every item · الترجمة العربية','ar',S.ar)+row('Du\'a reminders','Every 5 answered questions · تذكير بالدعاء','du',S.duas)+
   '<label class="f mt2">Your name · اسمك</label><input type="text" id="nm" maxlength="20" value="'+esc(S.name)+'"></div>'+
   '<div class="card"><h3>Cloud sync · المزامنة السحابية</h3><div class="note">Your account, points, and leaderboard sync automatically across devices when you sign in.<br><span class="ar">حسابك ونقاطك ولوحة المتصدرين بيتزامنوا تلقائيًا بين أجهزتك بعد تسجيل الدخول.</span></div><div class="li mt"><div class="t"><b>Shared sync</b><span>Automatic connection · اتصال تلقائي</span></div><span class="badge ok">Enabled</span></div></div></div>'+
   '<div class="card mt2"><h3>Danger zone</h3><div class="row mt wrap"><button class="btn danger" data-act="reset">Reset all progress · مسح التقدم</button></div></div></div>');
