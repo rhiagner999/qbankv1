@@ -1443,13 +1443,13 @@ function chSelect(){
 /* ================= حالة محفوظة ================= */
 const DEFAULT_DB='https://qabank-6f97a-default-rtdb.firebaseio.com';
 const K2='rhqb_v2',K1='rhqb_v1';
-const defState=()=>({pts:0,streak:0,last:'',ans:0,cor:0,secs:0,q:{},sess:[],theme:'dark',cfg:null,name:'',uid:'',accountKey:'',glinked:false,year:'',yearAt:0,db:DEFAULT_DB==='__DB__'?'':DEFAULT_DB,days:{},week:{k:'',p:0},ar:true,duas:true,rooms:[],bell:0,ch:1,sub:'ob'});
+const defState=()=>({pts:0,streak:0,last:'',ans:0,cor:0,secs:0,q:{},sess:[],theme:'dark',cfg:null,name:'',uid:'',accountKey:'',glinked:false,gauth:false,rev:0,resetAt:0,year:'',yearAt:0,db:DEFAULT_DB==='__DB__'?'':DEFAULT_DB,days:{},week:{k:'',p:0},ar:true,duas:true,rooms:[],bell:0,ch:1,sub:'ob'});
 let S=defState();
 try{const raw=localStorage.getItem(K2)||localStorage.getItem(K1);if(raw)S=Object.assign(defState(),JSON.parse(raw));}catch(e){}
 // Use one shared Firebase project on local HTML and GitHub Pages.
 S.db=DEFAULT_DB;
 if(!S.uid)S.uid='u'+Math.random().toString(36).slice(2,10)+Date.now().toString(36).slice(-4);
-function save(){try{localStorage.setItem(K2,JSON.stringify(S));}catch(e){}}
+function save(keepRev){if(!keepRev)S.rev=Date.now();try{localStorage.setItem(K2,JSON.stringify(S));}catch(e){}if(typeof pushSoon==='function')pushSoon();}
 let cfg=S.cfg&&S.cfg.topics?{mode:S.cfg.mode||'review',topics:new Set(S.cfg.topics),types:new Set(S.cfg.types),n:S.cfg.n||20}:{mode:'review',topics:new Set(chTopics()),types:new Set(Object.keys(TYPES)),n:20};
 if(!CHAPTERS[S.ch])S.ch=1;if(!SUBJECTS[S.sub])S.sub='ob';if(CHAPTERS[S.ch].sub!==S.sub)S.sub=CHAPTERS[S.ch].sub;
 cfg.topics=new Set([...cfg.topics].filter(k=>chTopics().includes(k)));if(!cfg.topics.size)cfg.topics=new Set(chTopics());
@@ -1508,11 +1508,39 @@ logo:'<path d="M4 3l10 9-10 9h5l10-9L9 3z"/>'
 };
 function ic(n,c){return '<svg class="ic '+(c||'')+'" viewBox="0 0 24 24" aria-hidden="true">'+(IC[n]||'')+'</svg>';}
 
+/* ================= Google-only mode + Auth restore ================= */
+const GOOGLE_ONLY=true;
+let AUTHREADY=null;
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+function authReady(){
+  if(AUTHREADY)return AUTHREADY;
+  AUTHREADY=(async()=>{
+    if(!S.gauth)return;
+    try{
+      const a=await Promise.race([fbAuth(),sleep(10000)]);
+      if(!a||!a.onAuthStateChanged)return;
+      await Promise.race([new Promise(res=>{const un=a.onAuthStateChanged(u=>{un();res(u);});}),sleep(10000)]);
+    }catch(e){}
+  })();
+  return AUTHREADY;
+}
+let noAuthShown=false;
+function noteNoAuth(){
+  if(noAuthShown||!S.accountKey)return;noAuthShown=true;
+  setTimeout(()=>{if(FBA&&FBA.currentUser)return;
+    modal('<div class="auth-panel"><div class="auth-brand"><div class="auth-brand-icon">'+ic('logo')+'</div><div><div class="auth-brand-name">RH Q-BANK</div><div class="auth-brand-sub">Sign in required</div></div></div><h2 class="auth-title">Sign in with Google 🔐</h2><p class="auth-description">The database is now protected. Sign in with Google once to keep saving your progress.<br><span class="ar">قاعدة البيانات بقت محمية. سجّل بجوجل مرة واحدة عشان تقدمك يفضل يتحفظ.</span></p><button class="btn auth-submit" data-act="reauth">'+(S.glinked?'Sign in with Google · الدخول بجوجل':'Link my account with Google · اربط حسابي بجوجل')+'</button><button class="btn ghost auth-submit" style="margin-top:8px" data-act="reauthlater">Later · بعدين</button></div>');
+  },400);
+}
 /* ================= قاعدة البيانات (Firebase Realtime DB عبر REST) ================= */
 const DB={st:'off',
   url(){let u=(S.db||'').trim();if(!u)return '';if(!/^https?:\/\//.test(u))u='https://'+u;return u.replace(/\/+$/,'');},
   ok(){return !!this.url();},
-  async req(m,p,b){try{const r=await fetch(this.url()+p+'.json',{method:m,headers:{'Content-Type':'application/json'},body:b===undefined?undefined:JSON.stringify(b)});if(!r.ok)throw new Error('HTTP '+r.status);const j=await r.json();this.set('on');return j;}catch(e){this.set('err');throw e;}},
+  async req(m,p,b){try{
+    await authReady();let q='';
+    if(FBA&&FBA.currentUser){try{q='?auth='+encodeURIComponent(await FBA.currentUser.getIdToken());}catch(e){}}
+    const r=await fetch(this.url()+(p||'/')+'.json'+q,{method:m,headers:{'Content-Type':'application/json'},body:b===undefined?undefined:JSON.stringify(b)});
+    if(r.status===401||r.status===403){const er=new Error('Permission denied — sign in with Google · غير مصرّح، سجّل الدخول بجوجل');er.perm=true;if(!(FBA&&FBA.currentUser))noteNoAuth();throw er;}
+    if(!r.ok)throw new Error('HTTP '+r.status);const j=await r.json();this.set('on');return j;}catch(e){if(!e.perm)this.set('err');throw e;}},
   get(p){return this.req('GET',p);},put(p,v){return this.req('PUT',p,v);},patch(p,v){return this.req('PATCH',p,v);},
   set(s){if(this.st!==s){this.st=s;paintDb();}}
 };
@@ -1551,7 +1579,8 @@ async function syncIdentity(){
       else if(S.week?.k!==wk)S.week={k:wk,p:0};
     }
     if(S.year&&!(remote&&remote.year))DB.patch('/players/'+S.uid,{year:S.year,yearAt:S.yearAt||Date.now()}).catch(()=>{});
-    identityReady=true;save();
+    try{await pullCloud();}catch(e){}
+    identityReady=true;save(true);
   }catch(e){identityReady=false;}finally{identityBusy=false;}
 }
 function accountKeyOf(name){return String(name||'').normalize('NFKC').trim().toLowerCase().replace(/[^a-z0-9_\-؀-ۿ]/g,'').replace(/\s+/g,'-').slice(0,64);}
@@ -1561,7 +1590,7 @@ async function passwordDigest(password){
   // Fallback for local file previews; use the hosted HTTPS version for stronger hashing.
   let h=2166136261;for(const b of bytes){h^=b;h=Math.imul(h,16777619);}return 'local-'+(h>>>0).toString(16);
 }
-function resetProgressForAccount(){S.year='';S.yearAt=0;S.pts=0;S.streak=0;S.last='';S.ans=0;S.cor=0;S.secs=0;S.q={};S.sess=[];S.days={};S.week={k:weekKey(),p:0};}
+function resetProgressForAccount(){cloudReady=false;S.rev=0;S.resetAt=0;S.year='';S.yearAt=0;S.pts=0;S.streak=0;S.last='';S.ans=0;S.cor=0;S.secs=0;S.q={};S.sess=[];S.days={};S.week={k:weekKey(),p:0};}
 async function enterAccount(){
   const name=($('#authName')?.value||'').trim().slice(0,20),password=$('#authPass')?.value||'';
   if(name.length<2){toast('Enter a name with at least 2 characters · اكتب اسم من حرفين على الأقل');return;}
@@ -1588,6 +1617,35 @@ async function enterAccount(){
   }catch(e){toast(esc(e.message||'Connection failed · فشل الاتصال'));if(btn){btn.disabled=false;btn.textContent='Continue / Create account · دخول / إنشاء حساب';}}
 }
 
+/* ================= Cloud state (Firebase is the source of truth) ================= */
+const NOCLOUD=['uid','accountKey','db','glinked','gauth','year','yearAt','name','rev'];
+let cloudReady=false,pushT=null;
+const badKey=k=>/[.#$\[\]\/]/.test(k);
+function cleanObj(o){if(Array.isArray(o))return o.map(cleanObj);if(o&&typeof o==='object'){const r={};for(const k of Object.keys(o)){if(badKey(k))continue;r[k]=cleanObj(o[k]);}return r;}return o;}
+function pushSoon(){if(!cloudReady)return;clearTimeout(pushT);pushT=setTimeout(pushNow,1500);}
+async function pushNow(){
+  if(!cloudReady||!S.uid||!S.accountKey||!DB.ok())return;
+  const d={};for(const k of Object.keys(S)){if(!NOCLOUD.includes(k))d[k]=S[k];}
+  try{await DB.put('/users/'+S.uid+'/state',{rev:S.rev||Date.now(),data:cleanObj(d)});}catch(e){}
+}
+async function pullCloud(){
+  cloudReady=false;
+  const c=await DB.get('/users/'+S.uid+'/state');
+  if(!c||!c.data){cloudReady=true;await pushNow();return;}
+  const def=defState(),d=c.data,cr=Number(c.rev)||0,lr=Number(S.rev)||0,cReset=Number(d.resetAt)||0,lReset=Number(S.resetAt)||0;
+  const cf={};for(const k of Object.keys(def)){if(NOCLOUD.includes(k))continue;cf[k]=(k in d)?d[k]:def[k];}
+  if(cReset>lReset){for(const k of Object.keys(cf))S[k]=cf[k];S.rev=cr;cloudReady=true;return;}
+  if(lReset>cReset){cloudReady=true;await pushNow();return;}
+  const L={pts:S.pts,ans:S.ans,cor:S.cor,secs:S.secs,q:S.q||{},days:S.days||{},week:S.week};
+  if(cr>lr){for(const k of Object.keys(cf))S[k]=cf[k];}
+  const mx=(a,b)=>Math.max(Number(a)||0,Number(b)||0);
+  S.pts=mx(L.pts,cf.pts);S.ans=mx(L.ans,cf.ans);S.cor=mx(L.cor,cf.cor);S.secs=mx(L.secs,cf.secs);
+  const q={},qa=cf.q||{},qb=L.q;for(const id of new Set([...Object.keys(qa),...Object.keys(qb)])){const a=qa[id],b=qb[id];q[id]=!a?b:!b?a:((Number(b.n)||0)>(Number(a.n)||0)?b:a);}S.q=q;
+  const days={},da=cf.days||{},db=L.days;for(const k of new Set([...Object.keys(da),...Object.keys(db)])){const a=da[k]||{},b=db[k]||{};days[k]={p:mx(a.p,b.p),a:mx(a.a,b.a),s:mx(a.s,b.s)};}S.days=days;
+  if(L.week&&cf.week&&L.week.k===cf.week.k)S.week={k:L.week.k,p:mx(L.week.p,cf.week.p)};
+  S.rev=Math.max(cr,lr);cloudReady=true;
+  save(true);await pushNow();
+}
 async function syncNow(){if(!DB.ok())return;try{
   const wk=weekKey();if(!S.week||S.week.k!==wk)S.week={k:wk,p:0};
   if(S.name&&!identityReady)await syncIdentity();
@@ -1680,9 +1738,9 @@ async function googleLogin(){
     const auth=await fbAuth();
     const prov=new firebase.auth.GoogleAuthProvider();prov.setCustomParameters({prompt:'select_account'});
     const r=await auth.signInWithPopup(prov);
-    GU={uid:r.user.uid,name:r.user.displayName||''};
+    GU={uid:r.user.uid,name:r.user.displayName||''};S.gauth=true;save(true);
     const rec=await DB.get('/google/'+GU.uid);
-    if(rec&&rec.accountKey&&await DB.get('/accounts/'+rec.accountKey)){await finishLogin(rec.accountKey);return;}
+    if(rec&&rec.accountKey){await finishLogin(rec.accountKey);return;}
     linkModal();
   }catch(e){const m=gErr(e);if(m)toast(esc(m),5000);if(btn)btn.disabled=false;}
 }
@@ -1712,27 +1770,33 @@ ACT.lkgo=async function(){
   if(name.length<2||!pass){toast('Enter your old name and password · اكتب الاسم والباسورد');return;}
   const b=$('#lkGo');b.disabled=true;
   try{
-    const key=accountKeyOf(name),acc=await DB.get('/accounts/'+key);
-    if(!acc)throw new Error('No account with this name · مفيش حساب بالاسم ده');
-    if(acc.passHash!==await passwordDigest(pass))throw new Error('Wrong password · كلمة المرور غلط');
-    if(acc.google&&acc.google!==GU.uid)throw new Error('This account is already linked to another Google account · الحساب ده مربوط بجوجل تاني');
-    await DB.patch('/accounts/'+key,{google:GU.uid});
-    await DB.put('/google/'+GU.uid,{accountKey:key,uid:acc.uid,t:Date.now()});
-    await finishLogin(key);
-  }catch(e){toast(esc(e.message||'Failed'),4000);b.disabled=false;}
+    const key=accountKeyOf(name),proof=await passwordDigest(pass);
+    let acc=null,readable=true;try{acc=await DB.get('/accounts/'+key);}catch(e){readable=false;}
+    if(readable){
+      if(!acc)throw new Error('No account with this name · مفيش حساب بالاسم ده');
+      if(acc.passHash!==proof)throw new Error('Wrong password · كلمة المرور غلط');
+      if(acc.google&&acc.google!==GU.uid)throw new Error('This account is already linked to another Google account · الحساب ده مربوط بجوجل تاني');
+    }
+    if(!(acc&&acc.google===GU.uid)){
+      try{await DB.patch('',{['google/'+GU.uid]:{accountKey:key,t:Date.now(),proof:proof},['accounts/'+key+'/google']:GU.uid});}
+      catch(e){if(e.perm)throw new Error('Wrong name or password, or the account is already linked · الاسم أو الباسورد غلط أو الحساب مربوط بجوجل تاني');throw e;}
+      DB.req('DELETE','/google/'+GU.uid+'/proof').catch(()=>{});
+    }
+    S.glinked=true;await finishLogin(key);
+  }catch(e){toast(esc(e.message||'Failed'),4500);b.disabled=false;}
 };
 ACT.lkcreate=async function(){
   const name=($('#lkName').value||'').trim().slice(0,20);
   if(name.length<2){toast('Name must be at least 2 characters · الاسم حرفين على الأقل');return;}
   const b=$('#lkGo');b.disabled=true;
+  const taken='This name is taken. If it is your old account, go back and link it. · الاسم مستخدم، لو ده حسابك القديم ارجع واربطه';
   try{
     const key=accountKeyOf(name);if(!key)throw new Error('Choose a different name');
-    if(await DB.get('/accounts/'+key))throw new Error('This name is taken. If it is your old account, go back and link it. · الاسم مستخدم، لو ده حسابك القديم ارجع واربطه');
+    try{if(await DB.get('/accounts/'+key))throw new Error(taken);}catch(e){if(e.message===taken)throw e;}
     const uid='u'+Math.random().toString(36).slice(2,10)+Date.now().toString(36).slice(-4);
-    await DB.put('/accounts/'+key,{name,uid,passHash:'google-only',google:GU.uid,createdAt:Date.now()});
-    await DB.put('/google/'+GU.uid,{accountKey:key,uid:uid,t:Date.now()});
-    await DB.put('/nameIndex/'+nameKey(name),{uid:uid,name:name});
-    resetProgressForAccount();await finishLogin(key,true);
+    const up={['accounts/'+key]:{name:name,uid:uid,google:GU.uid,createdAt:Date.now()},['google/'+GU.uid]:{accountKey:key,t:Date.now()},['nameIndex/'+nameKey(name)]:{uid:uid,name:name},['players/'+uid]:{name:name,pts:0,ans:0,cor:0,lvl:lvlOf(0),upd:{'.sv':'timestamp'},seen:{'.sv':'timestamp'}}};
+    try{await DB.patch('',up);}catch(e){if(e.perm)throw new Error(taken);throw e;}
+    resetProgressForAccount();S.glinked=true;await finishLogin(key,true);
   }catch(e){toast(esc(e.message||'Failed'),4500);b.disabled=false;}
 };
 function glinkCard(){
@@ -1741,22 +1805,38 @@ function glinkCard(){
   return '<div class="note" style="border-color:var(--warn,#f5a524)"><b>⚠ Link your account with Google · اربط حسابك بجوجل</b><br>Soon sign-in will be with Google only. Link now to keep your points.<br><span class="ar">قريبًا الدخول هيبقى بجوجل بس. اربط حسابك دلوقتي عشان نقاطك ما تضيعش.</span></div><button class="gbtn mt" data-act="glink" type="button">Link my account with Google · اربط حسابك بجوجل</button>';
 }
 function glinkBanner(){return (!S.accountKey||S.glinked)?'':'<div class="card mt2" style="border-color:rgba(245,165,36,.6)"><div class="row sb wrap"><div><b>⚠ Link your account with Google · اربط حسابك بجوجل</b><div class="sub">Sign-in will move to Google only soon. · الدخول قريبًا بجوجل بس.</div></div><button class="btn sm" data-act="glink">Link now · اربط الآن</button></div></div>';}
-ACT.glink=async function(el){
+ACT.glink=function(){
   if(inAppBrowser()){toast('Google sign-in does not work inside this app browser. Open the link in Chrome or Safari. · افتح الرابط في Chrome أو Safari',6000);return;}
   if(!S.accountKey||!DB.ok()){toast('Sign in first / check connection · سجّل دخولك الأول');return;}
-  if(el)el.disabled=true;
-  try{
-    const auth=await fbAuth();const prov=new firebase.auth.GoogleAuthProvider();prov.setCustomParameters({prompt:'select_account'});
-    const r=await auth.signInWithPopup(prov);const g=r.user.uid;
-    const acc=await DB.get('/accounts/'+S.accountKey);if(!acc)throw new Error('Account missing · الحساب مش موجود');
-    if(acc.google&&acc.google!==g)throw new Error('This account is already linked to a different Google account · الحساب ده مربوط بحساب جوجل تاني');
-    const rec=await DB.get('/google/'+g);
-    if(rec&&rec.accountKey&&rec.accountKey!==S.accountKey)throw new Error('This Google account is linked to another account · حساب جوجل ده مربوط بحساب تاني');
-    await DB.patch('/accounts/'+S.accountKey,{google:g});
-    await DB.put('/google/'+g,{accountKey:S.accountKey,uid:acc.uid,t:Date.now()});
-    S.glinked=true;save();toast('✅ Linked! Next time sign in with Google. · تم الربط، ادخل بجوجل المرة الجاية',5000);go(cur.v,cur.a);
-  }catch(e){const m=gErr(e);if(m)toast(esc(m),5000);if(el)el.disabled=false;}
+  modal('<div class="auth-panel"><div class="auth-brand"><div class="auth-brand-icon">'+ic('logo')+'</div><div><div class="auth-brand-name">RH Q-BANK</div><div class="auth-brand-sub">'+esc(S.name||'')+'</div></div></div><h2 class="auth-title">Link with Google · الربط بجوجل</h2><p class="auth-description">Confirm your current password, then choose your Google account.<br><span class="ar">أكّد كلمة المرور الحالية وبعدها اختار حساب جوجل.</span></p><label class="auth-field"><span class="auth-label"><span>Password</span><span class="ar">كلمة المرور</span></span><span class="auth-input-wrap">'+ic('lock','auth-field-icon')+'<input type="password" id="gpPass" autocomplete="current-password"></span></label><button class="btn auth-submit" id="gpGo" data-act="glinkgo">Continue with Google · كمّل بجوجل</button><button class="btn ghost auth-submit" style="margin-top:8px" data-act="reauthlater">Cancel · إلغاء</button></div>');
+  setTimeout(()=>{const i=$('#gpPass');if(i)i.focus();},50);
 };
+ACT.glinkgo=async function(){
+  const pass=($('#gpPass')&&$('#gpPass').value)||'';if(!pass){toast('Enter your password · اكتب كلمة المرور');return;}
+  const btn=$('#gpGo');if(btn)btn.disabled=true;
+  try{
+    const proof=await passwordDigest(pass);
+    const auth=await fbAuth();const prov=new firebase.auth.GoogleAuthProvider();prov.setCustomParameters({prompt:'select_account'});
+    const r=await auth.signInWithPopup(prov);const g=r.user.uid;S.gauth=true;save(true);
+    let rec=null;try{rec=await DB.get('/google/'+g);}catch(e){}
+    if(rec&&rec.accountKey&&rec.accountKey!==S.accountKey)throw new Error('This Google account is linked to another account · حساب جوجل ده مربوط بحساب تاني');
+    if(!(rec&&rec.accountKey===S.accountKey)){
+      let acc=null,readable=true;try{acc=await DB.get('/accounts/'+S.accountKey);}catch(e){readable=false;}
+      if(readable){
+        if(!acc)throw new Error('Account missing · الحساب مش موجود');
+        if(acc.passHash!==proof)throw new Error('Wrong password · كلمة المرور غلط');
+        if(acc.google&&acc.google!==g)throw new Error('This account is already linked to a different Google account · الحساب ده مربوط بحساب جوجل تاني');
+      }
+      try{await DB.patch('',{['google/'+g]:{accountKey:S.accountKey,t:Date.now(),proof:proof},['accounts/'+S.accountKey+'/google']:g});}
+      catch(e){if(e.perm)throw new Error('Wrong password, or the account is already linked · الباسورد غلط أو الحساب مربوط');throw e;}
+      DB.req('DELETE','/google/'+g+'/proof').catch(()=>{});
+    }
+    S.glinked=true;save(true);modal('');identityReady=false;await syncIdentity();
+    toast('✅ Linked! From now on sign in with Google. · تم الربط، ادخل بجوجل من دلوقتي',5000);go(cur.v,cur.a);
+  }catch(e){const m=gErr(e);if(m)toast(esc(m),5000);if(btn)btn.disabled=false;}
+};
+ACT.reauth=function(){modal('');if(S.glinked)googleLogin();else ACT.glink();};
+ACT.reauthlater=function(){modal('');};
 function yearModal(){
   modal('<div class="auth-panel"><div class="auth-brand"><div class="auth-brand-icon">'+ic('logo')+'</div><div><div class="auth-brand-name">RH Q-BANK</div><div class="auth-brand-sub">Onboarding</div></div></div><h2 class="auth-title">Which academic year are you in? 🎓</h2><p class="auth-description"><span class="ar">اختار سنتك الدراسية.</span></p><div class="yeargrid">'+YEARS.map(y=>'<button data-act="year" data-k="'+y.k+'">'+y.en+'<small class="ar">'+y.ar+'</small></button>').join('')+'</div></div>');
 }
@@ -2095,7 +2175,9 @@ ACT.th=()=>{S.theme=S.theme==='light'?'dark':'light';save();applyTheme();rr(VIEW
 ACT.ar=()=>{S.ar=!S.ar;save();applyTheme();rr(VIEWS.settings);};
 ACT.du=()=>{S.duas=!S.duas;save();rr(VIEWS.settings);};
 ACT.dbsave=async()=>{S.db=$('#dbu').value.trim();save();const m=$('#dbm');if(!S.db){m.textContent='Local only';paintDb();return;}m.textContent='Testing…';try{await DB.put('/ping/'+S.uid,{t:{'.sv':'timestamp'}});await syncNow();m.textContent='✓ Connected';m.style.color='var(--ok)';}catch(e){m.textContent='✗ Failed — check URL and rules (test mode)';m.style.color='var(--bad)';}paintDb();};
-ACT.reset=()=>{if(confirm('مسح كل التقدم؟ مش هينفع ترجعه.')){const keep={name:S.name,uid:S.uid,db:S.db,theme:S.theme};S=Object.assign(defState(),keep);save();hdr();VIEWS.settings();}};
+ACT.reset=()=>{if(confirm('مسح كل التقدم؟ مش هينفع ترجعه.')){const keep={name:S.name,uid:S.uid,db:S.db,theme:S.theme,accountKey:S.accountKey,glinked:S.glinked,gauth:S.gauth,year:S.year,yearAt:S.yearAt};S=Object.assign(defState(),keep);S.resetAt=Date.now();save();
+  if(DB.ok()&&S.accountKey&&S.uid){DB.patch('/players/'+S.uid,{pts:0,ans:0,cor:0,lvl:lvlOf(0),wp:0,upd:{'.sv':'timestamp'}}).catch(()=>{});pushNow();}
+  hdr();VIEWS.settings();}};
 
 /* ================= النتائج ================= */
 function resultsView(sum,results){
@@ -2288,9 +2370,13 @@ function boot(){
   if(S.name&&S.accountKey){identityReady=false;syncIdentity().then(()=>syncNow());}
   if(S.accountKey)syncSoon();
   if(S.accountKey&&!YEARS.some(y=>y.k===S.year)){setYear('y5');}
+  if(S.accountKey)authReady().then(()=>{if(!(FBA&&FBA.currentUser))noteNoAuth();});
   if(!S.accountKey){
-    modal('<div class="auth-panel"><div class="auth-brand"><div class="auth-brand-icon">'+ic('logo')+'</div><div><div class="auth-brand-name">RH Q-BANK</div><div class="auth-brand-sub">Reproductive Health · Question Bank</div></div></div><div class="auth-kicker">'+ic('shield','sm')+' SECURE ACCOUNT ACCESS</div><h2 class="auth-title">Welcome back <span style="color:#7aa2ff">👋</span></h2><p class="auth-description">Sign in or create your account to keep your study progress and points synced across devices.<br><span class="ar">سجّل دخولك أو أنشئ حسابًا عشان نقاطك وتقدمك في المذاكرة يفضلوا محفوظين على كل أجهزتك.</span></p><button class="gbtn" id="gGo" type="button"><svg width="20" height="20" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.6 5.9c4.4-4.1 7-10.1 7-17.6z"/><path fill="#FBBC05" d="M10.5 28.7a14.5 14.5 0 010-9.4l-7.9-6.1a24 24 0 000 21.6l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.6-5.9c-2.1 1.4-4.9 2.3-8.3 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.1C6.5 42.6 14.6 48 24 48z"/></svg>Continue with Google · الدخول بجوجل</button><div class="auth-or">or use name &amp; password · أو بالاسم والباسورد</div><label class="auth-field" for="authName"><span class="auth-label"><span>Full name</span><span class="ar">الاسم</span></span><span class="auth-input-wrap">'+ic('user','auth-field-icon')+'<input type="text" id="authName" maxlength="20" autocomplete="username" placeholder="Enter your name" value="'+esc(S.name||'')+'"></span></label><label class="auth-field" for="authPass"><span class="auth-label"><span>Password</span><span class="ar">كلمة المرور</span></span><span class="auth-input-wrap">'+ic('lock','auth-field-icon')+'<input type="password" id="authPass" minlength="4" autocomplete="current-password" placeholder="At least 4 characters"></span></label><div class="auth-hint">'+ic('info')+'<span>If the name is new, an account will be created. If it already exists, enter its password to sign in.<br><span class="ar">لو الاسم جديد هنعمل حساب، ولو مسجّل قبل كده اكتب كلمة المرور الخاصة بيه.</span></span></div><button class="btn auth-submit" id="authGo">Continue <span aria-hidden="true">→</span> <span class="ar">دخول / إنشاء حساب</span></button><div class="auth-footer">'+ic('shield-check')+' Your progress is synced automatically across devices</div></div>');
-    $('#authGo').onclick=enterAccount;$('#gGo').onclick=googleLogin;$('#authPass').onkeydown=e=>{if(e.key==='Enter')enterAccount();};setTimeout(()=>$('#authName').focus(),50);
+    let AH='<div class="auth-panel"><div class="auth-brand"><div class="auth-brand-icon">'+ic('logo')+'</div><div><div class="auth-brand-name">RH Q-BANK</div><div class="auth-brand-sub">Reproductive Health · Question Bank</div></div></div><div class="auth-kicker">'+ic('shield','sm')+' SECURE ACCOUNT ACCESS</div><h2 class="auth-title">Welcome back <span style="color:#7aa2ff">👋</span></h2><p class="auth-description">Sign in or create your account to keep your study progress and points synced across devices.<br><span class="ar">سجّل دخولك أو أنشئ حسابًا عشان نقاطك وتقدمك في المذاكرة يفضلوا محفوظين على كل أجهزتك.</span></p><button class="gbtn" id="gGo" type="button"><svg width="20" height="20" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.6 5.9c4.4-4.1 7-10.1 7-17.6z"/><path fill="#FBBC05" d="M10.5 28.7a14.5 14.5 0 010-9.4l-7.9-6.1a24 24 0 000 21.6l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.6-5.9c-2.1 1.4-4.9 2.3-8.3 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.1C6.5 42.6 14.6 48 24 48z"/></svg>Continue with Google · الدخول بجوجل</button><div class="auth-or">or use name &amp; password · أو بالاسم والباسورد</div><label class="auth-field" for="authName"><span class="auth-label"><span>Full name</span><span class="ar">الاسم</span></span><span class="auth-input-wrap">'+ic('user','auth-field-icon')+'<input type="text" id="authName" maxlength="20" autocomplete="username" placeholder="Enter your name" value="'+esc(S.name||'')+'"></span></label><label class="auth-field" for="authPass"><span class="auth-label"><span>Password</span><span class="ar">كلمة المرور</span></span><span class="auth-input-wrap">'+ic('lock','auth-field-icon')+'<input type="password" id="authPass" minlength="4" autocomplete="current-password" placeholder="At least 4 characters"></span></label><div class="auth-hint">'+ic('info')+'<span>If the name is new, an account will be created. If it already exists, enter its password to sign in.<br><span class="ar">لو الاسم جديد هنعمل حساب، ولو مسجّل قبل كده اكتب كلمة المرور الخاصة بيه.</span></span></div><button class="btn auth-submit" id="authGo">Continue <span aria-hidden="true">→</span> <span class="ar">دخول / إنشاء حساب</span></button><div class="auth-footer">'+ic('shield-check')+' Your progress is synced automatically across devices</div></div>';
+    if(GOOGLE_ONLY)AH=AH.replace(/<div class="auth-or">[\s\S]*?<\/button><div class="auth-footer">/,'<div class="auth-footer">');
+    modal(AH);
+    $('#gGo').onclick=googleLogin;
+    if($('#authGo')){$('#authGo').onclick=enterAccount;$('#authPass').onkeydown=e=>{if(e.key==='Enter')enterAccount();};setTimeout(()=>$('#authName').focus(),50);}
   }
 }
 /* ================= التحديات والإشعارات ================= */
@@ -2354,7 +2440,7 @@ ACT.chacc=async function(el){
     await DB.req('DELETE','/inbox/'+S.uid+'/'+n.id);NOTES=NOTES.filter(x=>x.id!==n.id);paintBell();
     if(!r||r.status!=='lobby'){modal('');toast('<div>This challenge expired · التحدي انتهى</div>',3000);return;}
     await DB.put('/rooms/'+n.code+'/players/'+S.uid,{name:S.name||'Player',seen:{'.sv':'timestamp'},j:{'.sv':'timestamp'},pts:0,ans:0,cor:0});
-    await DB.put('/inbox/'+n.from+'/a'+Date.now().toString(36),{type:'accepted',fromName:S.name||'Player',ts:Date.now()});
+    await DB.put('/inbox/'+n.from+'/a'+Date.now().toString(36),{type:'accepted',from:S.uid,fromName:S.name||'Player',ts:Date.now()});
     modal('');go('arena');enterRoom(n.code,false);
   }catch(e){toast('<div>Connection error</div>',2500);}
 };
@@ -2365,7 +2451,7 @@ ACT.chdec=async function(el){
     S.pts=Math.max(0,S.pts-10);if(S.week)S.week.p=Math.max(0,(S.week.p||0)-10);save();hdr();
     await DB.req('DELETE','/inbox/'+S.uid+'/'+n.id);NOTES=NOTES.filter(x=>x.id!==n.id);
     await DB.req('DELETE','/rooms/'+n.code).catch(()=>{});
-    await DB.put('/inbox/'+n.from+'/d'+Date.now().toString(36),{type:'declined',fromName:S.name||'Player',ts:Date.now()});
+    await DB.put('/inbox/'+n.from+'/d'+Date.now().toString(36),{type:'declined',from:S.uid,fromName:S.name||'Player',ts:Date.now()});
     await syncNow();paintBell();modal('');toast('<div>You declined and lost 10 pts · اتخصم منك 10 نقاط</div>',3500);
   }catch(e){toast('<div>Connection error</div>',2500);}
 };
