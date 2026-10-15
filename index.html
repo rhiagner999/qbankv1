@@ -439,12 +439,18 @@ textarea.listening{border-color:#ef4444!important;box-shadow:0 0 0 3px rgba(239,
  .topbar{position:sticky;top:8px;margin:8px 12px 0;height:58px;padding:0 12px;border:1px solid var(--border);border-radius:22px;background:color-mix(in srgb,var(--surface) 92%,transparent);box-shadow:var(--sh)}
  .bnav{display:flex;position:fixed;left:12px;right:12px;bottom:max(10px,env(safe-area-inset-bottom));height:68px;z-index:44;padding:0 6px 7px;border-radius:26px;background:var(--surface);border:1px solid var(--border);box-shadow:0 14px 40px -10px rgba(0,0,0,.45);align-items:flex-end;justify-content:space-around}
  .bnav button{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:0;color:var(--muted);font:700 11px var(--font);position:relative;padding:0;cursor:pointer}
- .bnav button i{display:grid;place-items:center;width:26px;height:26px;transition:all .2s}
+ .bnav button i{display:grid;place-items:center;width:26px;height:26px}
  .bnav button i svg{width:22px;height:22px}
  .bnav button.on{color:var(--primary)}
- .bnav button.on i{position:absolute;top:-30px;width:56px;height:56px;border-radius:50%;background:var(--surface);border:3px solid var(--primary);box-shadow:0 8px 20px -6px var(--primary-glow)}
- .bnav button.on span{margin-top:30px}
  .bnav button.on i svg{width:24px;height:24px}
+
+.bnav button i{position:relative;isolation:isolate;transition:transform .5s cubic-bezier(.34,1.56,.64,1),color .25s}
+.bnav button i::before{content:'';position:absolute;inset:-15px;border-radius:50%;background:var(--surface);border:3px solid var(--primary);box-shadow:0 8px 20px -6px var(--primary-glow);transform:scale(.2);opacity:0;transition:transform .5s cubic-bezier(.34,1.56,.64,1),opacity .25s;z-index:-1}
+.bnav button.on i{transform:translateY(-27px)}
+.bnav button.on i::before{transform:scale(1);opacity:1}
+.bnav button span{transition:color .25s,transform .4s cubic-bezier(.34,1.56,.64,1)}
+.bnav button.on span{transform:translateY(1px)}
+.bnav button:active i{transform:scale(.88)}.bnav button.on:active i{transform:translateY(-27px) scale(.92)}
  #main{padding-bottom:112px}
  .sidebar{z-index:46}
  .app.open .bnav{z-index:40}
@@ -453,14 +459,14 @@ textarea.listening{border-color:#ef4444!important;box-shadow:0 0 0 3px rgba(239,
 .ba img{position:absolute;max-width:none;height:auto;display:block;pointer-events:none;user-select:none}
 .ba .bm{width:30.749%;top:0.0%}
 .ba .bw{width:71.318%;top:9.938%}
-.ba.en .bm{left:69.251%;animation:bmEn 2.1s cubic-bezier(.3,.7,.2,1) both}
-.ba.en .bw{left:0%;animation:bwEn 1.1s .95s cubic-bezier(.2,.8,.2,1) both}
-.ba.ar .bm{left:0%;animation:bmAr 2.1s cubic-bezier(.3,.7,.2,1) both}
-.ba.ar .bw{left:28.682%;animation:bwAr 1.1s .95s cubic-bezier(.2,.8,.2,1) both}
-@keyframes bmEn{0%{left:34.626%;opacity:0;transform:scale(.4) rotate(-12deg)}22%{left:34.626%;opacity:1;transform:scale(1.08) rotate(0)}32%{transform:scale(1)}45%{left:39.626%}62%{left:30.626%}100%{left:69.251%;opacity:1;transform:none}}
-@keyframes bmAr{0%{left:34.626%;opacity:0;transform:scale(.4) rotate(12deg)}22%{left:34.626%;opacity:1;transform:scale(1.08) rotate(0)}32%{transform:scale(1)}45%{left:29.626%}62%{left:38.626%}100%{left:0%;opacity:1;transform:none}}
-@keyframes bwEn{0%{opacity:0;clip-path:inset(0 0 0 100%);transform:translateX(14%)}100%{opacity:1;clip-path:inset(0 0 0 0);transform:none}}
-@keyframes bwAr{0%{opacity:0;clip-path:inset(0 100% 0 0);transform:translateX(-14%)}100%{opacity:1;clip-path:inset(0 0 0 0);transform:none}}
+.ba.en .bm{left:69.251%;animation:bmEn 8s cubic-bezier(.45,0,.2,1) infinite}
+.ba.en .bw{left:0%;animation:bwEn 8s cubic-bezier(.45,0,.2,1) infinite}
+.ba.ar .bm{left:0%;animation:bmAr 8s cubic-bezier(.45,0,.2,1) infinite}
+.ba.ar .bw{left:28.682%;animation:bwAr 8s cubic-bezier(.45,0,.2,1) infinite}
+@keyframes bmEn{0%{left:34.625%;opacity:0;transform:scale(.5) rotate(-10deg)}7%{left:34.625%;opacity:1;transform:scale(1.08) rotate(0)}10%{transform:scale(1)}14%{left:39.625%}20%{left:30.625%}25%{left:34.625%}31%{left:34.625%}47%{left:69.251%;transform:none}85%{left:69.251%;opacity:1;transform:none}96%{left:34.625%;opacity:1;transform:none}100%{left:34.625%;opacity:0;transform:scale(.6)}}
+@keyframes bmAr{0%{left:34.625%;opacity:0;transform:scale(.5) rotate(10deg)}7%{left:34.625%;opacity:1;transform:scale(1.08) rotate(0)}10%{transform:scale(1)}14%{left:29.625%}20%{left:38.625%}25%{left:34.625%}31%{left:34.625%}47%{left:0%;transform:none}85%{left:0%;opacity:1;transform:none}96%{left:34.625%;opacity:1;transform:none}100%{left:34.625%;opacity:0;transform:scale(.6)}}
+@keyframes bwEn{0%,31%{opacity:0;clip-path:inset(0 0 0 100%);transform:translateX(14%)}52%{opacity:1;clip-path:inset(0 0 0 0);transform:none}84%{opacity:1;clip-path:inset(0 0 0 0);transform:none}93%,100%{opacity:0;clip-path:inset(0 0 0 100%);transform:translateX(14%)}}
+@keyframes bwAr{0%,31%{opacity:0;clip-path:inset(0 100% 0 0);transform:translateX(-14%)}52%{opacity:1;clip-path:inset(0 0 0 0);transform:none}84%{opacity:1;clip-path:inset(0 0 0 0);transform:none}93%,100%{opacity:0;clip-path:inset(0 100% 0 0);transform:translateX(-14%)}}
 @media (prefers-reduced-motion:reduce){.ba .bm,.ba .bw{animation:none!important}}
 .gate .auth-logo{margin:0 0 18px}.auth-logo{--bw:250px}.gate .auth-logo{--bw:270px}
 .brand .ba{--bw:176px;margin:6px auto 0}.toplogo.ba{--bw:92px}
@@ -1618,21 +1624,26 @@ function ic(n,c){return '<svg class="ic '+(c||'')+'" viewBox="0 0 24 24" aria-hi
 const GOOGLE_ONLY=true;
 let AUTHREADY=null;
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+let AUTHDEF=false;
 function authReady(){
   if(AUTHREADY)return AUTHREADY;
   AUTHREADY=(async()=>{
-    if(!S.gauth)return;
-    try{
-      const a=await Promise.race([fbAuth(),sleep(10000)]);
-      if(!a||!a.onAuthStateChanged)return;
-      await Promise.race([new Promise(res=>{const un=a.onAuthStateChanged(u=>{un();res(u);});}),sleep(10000)]);
-    }catch(e){}
+    if(!S.gauth&&!S.accountKey&&!S.glinked)return;
+    for(let t=0;t<3;t++){
+      try{
+        const a=await Promise.race([fbAuth(),sleep(25000).then(()=>null)]);
+        if(!a||!a.onAuthStateChanged){FBA=null;continue;}
+        const u=await Promise.race([new Promise(res=>{const un=a.onAuthStateChanged(x=>{un();res({u:x});});}),sleep(20000).then(()=>null)]);
+        if(u){AUTHDEF=true;return;}
+      }catch(e){}
+    }
+    AUTHREADY=null;
   })();
   return AUTHREADY;
 }
 let noAuthShown=false;
 function noteNoAuth(){
-  if(noAuthShown||!S.accountKey)return;noAuthShown=true;
+  if(noAuthShown||!S.accountKey)return;try{if(Date.now()-Number(localStorage.getItem('rhqb_na')||0)<3*864e5)return;}catch(e){}noAuthShown=true;
   setTimeout(()=>{if(FBA&&FBA.currentUser)return;
     modal('<div class="auth-panel"><div class="auth-logo">'+brandHTML()+'</div><div class="auth-brand-sub" style="text-align:center;margin:-8px 0 16px">Sign in required</div><h2 class="auth-title">Sign in with Google 🔐</h2><p class="auth-description">The database is now protected. Sign in with Google once to keep saving your progress.<br><span class="ar">قاعدة البيانات بقت محمية. سجّل بجوجل مرة واحدة عشان تقدمك يفضل يتحفظ.</span></p><button class="btn auth-submit" data-act="reauth">'+(S.glinked?'Sign in with Google · الدخول بجوجل':'Link my account with Google · اربط حسابي بجوجل')+'</button><button class="btn ghost auth-submit" style="margin-top:8px" data-act="reauthlater">Later · بعدين</button></div>');
   },400);
@@ -1641,12 +1652,24 @@ function noteNoAuth(){
 const DB={st:'off',
   url(){let u=(S.db||'').trim();if(!u)return '';if(!/^https?:\/\//.test(u))u='https://'+u;return u.replace(/\/+$/,'');},
   ok(){return !!this.url();},
-  async req(m,p,b){try{
-    await authReady();let q='';
-    if(FBA&&FBA.currentUser){try{q='?auth='+encodeURIComponent(await FBA.currentUser.getIdToken());}catch(e){}}
-    const r=await fetch(this.url()+(p||'/')+'.json'+q,{method:m,headers:{'Content-Type':'application/json'},body:b===undefined?undefined:JSON.stringify(b)});
-    if(r.status===401||r.status===403){const er=new Error('Permission denied — sign in with Google · غير مصرّح، سجّل الدخول بجوجل');er.perm=true;if(!(FBA&&FBA.currentUser))noteNoAuth();throw er;}
-    if(!r.ok)throw new Error('HTTP '+r.status);const j=await r.json();this.set('on');return j;}catch(e){if(!e.perm)this.set('err');throw e;}},
+  async req(m,p,b){
+    let last,force=false;
+    for(let i=0;i<4;i++){
+      try{
+        await authReady();let q='';
+        if(FBA&&FBA.currentUser){try{q='?auth='+encodeURIComponent(await FBA.currentUser.getIdToken(force));}catch(e){}}
+        const ctl=new AbortController();const tm=setTimeout(()=>ctl.abort(),20000);let r;
+        try{r=await fetch(this.url()+(p||'/')+'.json'+q,{method:m,headers:{'Content-Type':'application/json'},body:b===undefined?undefined:JSON.stringify(b),signal:ctl.signal});}finally{clearTimeout(tm);}
+        if(r.status===401||r.status===403){
+          if(FBA&&FBA.currentUser&&!force){force=true;continue;}
+          if(!AUTHDEF&&!(FBA&&FBA.currentUser)&&i<3){AUTHREADY=null;await sleep(1500);continue;}
+          const er=new Error('Permission denied — sign in with Google · غير مصرّح، سجّل الدخول بجوجل');er.perm=true;if(AUTHDEF&&!(FBA&&FBA.currentUser))noteNoAuth();throw er;}
+        if(!r.ok)throw new Error('HTTP '+r.status);
+        const j=await r.json();this.set('on');return j;
+      }catch(e){last=e;if(e.perm)break;if(i<3)await sleep(500*(i+1));}
+    }
+    if(!last.perm)this.set('err');throw last;
+  },
   get(p){return this.req('GET',p);},put(p,v){return this.req('PUT',p,v);},patch(p,v){return this.req('PATCH',p,v);},
   set(s){if(this.st!==s){this.st=s;paintDb();}}
 };
@@ -1786,7 +1809,7 @@ const tr=(en,ar)=>L()==='ar'?ar:en;
 function applyLang(){const ar=L()==='ar';document.documentElement.lang=ar?'ar':'en';document.documentElement.dir=ar?'rtl':'ltr';}
 const nfmt=n=>L()==='ar'?String(n).replace(/\d/g,d=>'٠١٢٣٤٥٦٧٨٩'[d]):String(n);
 /* ================= الإطار (القائمة الجانبية) ================= */
-const NAV=[['dashboard','Dashboard','لوحة التحكم','grid'],['study','Study & Practice','المذاكرة والتدريب','book'],['subjects','Subjects','المواد والمواضيع','layers'],['flash','Flashcards','البطاقات والجداول','cards'],['arena','Friends Arena','ساحة الأصدقاء','users'],['board','Global Leaderboard','المتصدرون','trophy'],['progress','My Progress','تقدمي','trend'],['profile','Profile','الملف الشخصي','user']];
+const NAV=[['dashboard','Dashboard','لوحة التحكم','grid'],['study','Study & Practice','المذاكرة والتدريب','book'],['subjects','Subjects','المواد والمواضيع','layers'],['flash','Flashcards','البطاقات والجداول','cards'],['arena','Friends Arena','ساحة الأصدقاء','users'],['board','Global Leaderboard','المتصدرون','trophy'],['profile','Profile','الملف الشخصي','user']];
 const TITLE_X={settings:['Settings','الإعدادات'],pview:['Profile','الملف الشخصي'],arena:['Friends Arena','ساحة الأصدقاء']};
 function titleOf(v){const n=NAV.find(x=>x[0]===v);const t=n?[n[1],n[2]]:(TITLE_X[v]||['','']);return tr(t[0],t[1]);}
 function applyTheme(){document.documentElement.dataset.theme=S.theme==='light'?'light':'dark';const a=$('#app');if(a)a.classList.toggle('noar',!S.ar);}
@@ -1812,7 +1835,31 @@ function main(h){const m=$('#main');const y=window.scrollY;m.innerHTML=KEEP?h.re
 let cur={v:'dashboard'};
 const VIEWS={};
 const LEAVE=[];
+const LEAVE_PEN=10;
+function sessActive(){return (G&&!G.finished&&G.i<G.queue.length)?'solo':(R&&R.phase==='live'&&!R.me.done)?'room':'';}
+function sessMark(kind){try{localStorage.setItem('rhqb_act',JSON.stringify({k:kind,base:Number(S.pts)||0,wbase:(S.week&&Number(S.week.p))||0,t:Date.now()}));}catch(e){}}
+function sessClear(){try{localStorage.removeItem('rhqb_act');}catch(e){}}
+let BOOT_MARK=null;try{BOOT_MARK=JSON.parse(localStorage.getItem('rhqb_act')||'null');localStorage.removeItem('rhqb_act');}catch(e){}
+function applyLeavePenalty(m){
+  if(m===undefined){try{m=JSON.parse(localStorage.getItem('rhqb_act')||'null');}catch(e){m=null;}}
+  if(!m)return 0;sessClear();
+  const before=Number(S.pts)||0;
+  S.pts=Math.max(0,Math.min(before,Number(m.base)||0)-LEAVE_PEN);
+  const wk=weekKey();if(!S.week||S.week.k!==wk)S.week={k:wk,p:0};
+  S.week.p=Math.max(0,Math.min(Number(S.week.p)||0,Number(m.wbase)||0)-LEAVE_PEN);
+  save();try{hdr();}catch(e){}
+  if(DB.ok()&&S.uid&&S.accountKey){syncNow().then(()=>pushNow()).catch(()=>{});}
+  return before-S.pts;
+}
+window.addEventListener('beforeunload',e=>{if(sessActive()){e.preventDefault();e.returnValue='';}});
 function guard(){
+  if(sessActive()){
+    if(!confirm('Leaving now will cost you every point you earned in this session plus '+LEAVE_PEN+' points. Leave anyway? · لو خرجت دلوقتي هتخسر كل النقاط اللي كسبتها في الجلسة دي + '+LEAVE_PEN+' نقاط. متأكد؟'))return true;
+    const lost=applyLeavePenalty();toast('<div>You lost '+lost+' points for leaving mid-session. · خسرت '+lost+' نقطة عشان خرجت في نص الجلسة</div>',5000);
+  }
+  return false;
+}
+function guardOld(){
   if(G&&G.mode==='exam'&&G.i<G.queue.length&&!G.finished){if(!confirm('هتخرج من الامتحان وتخسر التقدم. متأكد؟'))return true;}
   if(typeof roomGuard==='function'&&roomGuard())return true;
   return false;
@@ -1820,7 +1867,7 @@ function guard(){
 function go(v,a){stopMic();
   if(guard())return;ARENA_CREATE=false;
   stopTick();LEAVE.forEach(f=>{try{f();}catch(e){}});LEAVE.length=0;G=null;
-  cur={v,a};$('#app').classList.remove('open');
+  cur={v,a};try{if(['dashboard','study','subjects','flash','arena','board','profile','settings'].includes(v))localStorage.setItem('rhqb_last',JSON.stringify({v}));}catch(e){}$('#app').classList.remove('open');
   document.querySelectorAll('[data-nav]').forEach(b=>b.classList.toggle('on',b.dataset.nav===v));
   $('#ptitle').textContent=titleOf(v);const um=$('#umenu');if(um)um.hidden=true;
   hdr();(VIEWS[v]||VIEWS.dashboard)(a);
@@ -1835,7 +1882,7 @@ async function fbAuth(){
   if(FBA)return FBA;
   if(!window.firebase){await loadScript('https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js');await loadScript('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js');}
   if(!firebase.apps.length)firebase.initializeApp(FBCFG);
-  FBA=firebase.auth();return FBA;
+  FBA=firebase.auth();try{await FBA.setPersistence(firebase.auth.Auth.Persistence.LOCAL);}catch(e){}return FBA;
 }
 function inAppBrowser(){return /FBAN|FBAV|FB_IAB|Instagram|Telegram|MicroMessenger|Snapchat|TikTok|; wv\)/i.test(navigator.userAgent);}
 function gErr(e){
@@ -1953,7 +2000,7 @@ ACT.glinkgo=async function(){
   }catch(e){const m=gErr(e);if(m)toast(esc(m),5000);if(btn)btn.disabled=false;}
 };
 ACT.reauth=function(){modal('');if(S.glinked)googleLogin();else ACT.glink();};
-ACT.reauthlater=function(){modal('');};
+ACT.reauthlater=function(){try{localStorage.setItem('rhqb_na',String(Date.now()));}catch(e){}modal('');};
 function yearModal(){
   modal('<div class="auth-panel gate-page"><div class="auth-logo">'+brandHTML()+'</div><div class="auth-brand-sub" style="text-align:center;margin:-8px 0 16px">Onboarding</div><h2 class="auth-title">Which academic year are you in? 🎓</h2><p class="auth-description"><span class="ar">اختار سنتك الدراسية.</span></p><div class="yeargrid">'+YEARS.map(y=>'<button data-act="year" data-k="'+y.k+'">'+y.en+'<small class="ar">'+y.ar+'</small></button>').join('')+'</div></div>');
 }
@@ -2017,7 +2064,7 @@ function start(pool,mode,n){
   const queue=picks.map(q=>prepare(q));
   let secs=0;queue.forEach(q=>secs+=TYPES[q.t].sec);
   G={mode,queue,i:0,st:queue.map(()=>'p'),res:[],start:Date.now(),pts:0,retried:{},deadline:mode==='exam'?Date.now()+secs*1000:0,hints:0,finished:false};
-  stopTick();
+  sessMark('solo');stopTick();
   tick=setInterval(()=>{const el=$('#timer');if(!el||!G)return;if(G.mode==='exam'){const left=(G.deadline-Date.now())/1000;el.innerHTML=ic('clock','sm')+' '+fmt(left);el.style.color=left<60?'var(--bad)':'';if(left<=0)finish(true);}else el.innerHTML=ic('clock','sm')+' '+fmt((Date.now()-G.start)/1000);},1000);
   renderQ();
 }
@@ -2178,7 +2225,7 @@ function showFeedback(q,r,ok,earned,shown){
 }
 function next(){stopMic();G.i++;if(G.i>=G.queue.length)finish(false);else renderQ();}
 
-function finish(timeUp){stopMic();
+function finish(timeUp){stopMic();sessClear();
   stopTick();
   const res=G.res;G.finished=true;
   const first=res.filter(r=>!r.retry);
@@ -2201,6 +2248,11 @@ function mastCard(k){const m=topicMastery(k),a=topicAcc(k),n=ALL.filter(q=>q.tp=
 const CH_GAP=150;
 function lbRows(list,meUid,key,ch){const mi=list.findIndex(x=>x.uid===meUid);return list.map((p,i)=>'<div class="lrow'+(p.uid===meUid?' me':'')+(i===0?' top':'')+'" data-act="pv" data-u="'+esc(p.uid)+'" title="'+esc(tr('View profile','عرض البروفايل'))+'"><span class="rank r'+(i<3?i+1:'')+'">'+(i+1)+'</span>'+avatar(p.name,'',p.on===undefined?undefined:!!p.on,p.av)+'<div class="n">'+esc(p.name)+(i===0?ic('crown','crown'):'')+(p.uid===meUid?' <span class="tag">You</span>':'')+'<small>Level '+(p.lvl||lvlOf(p[key]||0))+'</small></div><div class="p">'+(p[key]||0)+'<small>pts</small></div>'+(ch&&mi>0&&i===mi-1&&p.on&&(p.pts||0)-(list[mi].pts||0)<=CH_GAP?'<button class="btn sm" data-act="chal" data-u="'+esc(p.uid)+'" data-n="'+esc(p.name)+'">⚔ Challenge</button>':'')+'</div>').join('');}
 async function loadBoard(weekly){
+  const ck='rhqb_lb_'+(weekly?'w':'a')+curYear();
+  try{const r=await loadBoardRaw(weekly);try{localStorage.setItem(ck,JSON.stringify(r));}catch(e){}return r;}
+  catch(e){let c=null;try{c=JSON.parse(localStorage.getItem(ck)||'null');}catch(e2){}if(c&&c.length)return c;throw e;}
+}
+async function loadBoardRaw(weekly){
   const o=await DB.get('/players')||{};
   let l=Object.keys(o).map(k=>Object.assign({uid:k},o[k])).filter(p=>(p.year||'y5')===curYear());
   const mx=Math.max(0,...l.map(p=>Number(p.seen)||0));l.forEach(p=>{p.on=p.uid===S.uid||(mx-(Number(p.seen)||0)<45000&&(Number(p.seen)||0)>0);});
@@ -2360,7 +2412,7 @@ ACT.pshare=async()=>{
 };
 ACT.pshtog=()=>{S.pshare=S.pshare===false;save();pushProfile();rr(VIEWS.profile);};
 ACT.pimgdel=el=>{const k=el.dataset.k;S[k]='';save(true);pushImages();hdr();rr(VIEWS.profile);};
-ACT.lang=()=>{S.lang=L()==='ar'?'en':'ar';save(true);location.reload();};
+ACT.lang=()=>{if(guard())return;S.lang=L()==='ar'?'en':'ar';save(true);location.reload();};
 /* ---- رفع الصور ---- */
 const IMG_LIM={avatar:{w:256,h:256,min:128,max:70000,q:.82},cover:{w:960,h:300,min:480,minh:150,max:200000,q:.8}};
 let NSFW=null;
@@ -2571,7 +2623,7 @@ ACT.rshare=()=>{if(!R)return;const t='Join my RAFIQ room! Code: '+R.code+'\n'+R.
 ACT.rstart=async()=>{if(!R||!R.host)return;try{await DB.patch('/rooms/'+R.code,{status:'live',startAt:{'.sv':'timestamp'}});pollRoom();}catch(e){}};
 
 function beginLive(){
-  R.phase='live';R.qs=R.room.qids.map(id=>prepare(BYID[id],true));R.i=0;R.me={done:false,pts:0,ans:0,cor:0};R.res=[];
+  sessMark('room');R.phase='live';R.qs=R.room.qids.map(id=>prepare(BYID[id],true));R.i=0;R.me={done:false,pts:0,ans:0,cor:0};R.res=[];
   R.cd=3;
   main('<div class="fade empty"><h1>Get ready…</h1><div class="code" id="cd">3</div></div>');
   const t=setInterval(()=>{if(!R||R.phase!=='live'){clearInterval(t);return;}R.cd--;const e=$('#cd');if(e)e.textContent=R.cd||'GO';if(R.cd<0){clearInterval(t);rq();}},800);
@@ -2612,7 +2664,7 @@ function liveBoard(){
   }
 }
 async function rFinish(){
-  clearInterval(R.tm);R.phase='final';R.me.done=true;
+  sessClear();clearInterval(R.tm);R.phase='final';R.me.done=true;
   try{await DB.patch('/rooms/'+R.code+'/players/'+S.uid,{pts:R.me.pts,ans:R.me.ans,cor:R.me.cor,done:true,seen:{'.sv':'timestamp'}});}catch(e){}
   R.saved=false;finalView();pollRoom();
 }
@@ -2708,11 +2760,15 @@ function i18nStart(){
 function boot(){
   shell();applyLang();i18nStart();
   const h=(location.hash||'').match(/join=/);
-  const ph=(location.hash||'').match(/p=([A-Za-z0-9_-]+)/);go(h?'arena':ph?'pview':'dashboard',ph?ph[1]:undefined);
-  if(S.name&&S.accountKey){identityReady=false;syncIdentity().then(()=>{syncNow();try{loadMyImages();pushProfile();}catch(e){}});}
+  const ph=(location.hash||'').match(/p=([A-Za-z0-9_-]+)/);
+  let last=null;try{last=JSON.parse(localStorage.getItem('rhqb_last')||'null');}catch(e){}
+  const okv=last&&['dashboard','study','subjects','flash','arena','board','profile','settings'].includes(last.v)?last.v:null;
+  go(h?'arena':ph?'pview':okv||'dashboard',ph?ph[1]:undefined);
+  if(S.name&&S.accountKey){identityReady=false;syncIdentity().then(async()=>{await syncNow();const lost=applyLeavePenalty(BOOT_MARK);BOOT_MARK=null;if(lost)toast('<div>You left a session unfinished and lost '+lost+' points. · سبت جلسة من غير ما تكملها وخسرت '+lost+' نقطة</div>',7000);try{loadMyImages();pushProfile();}catch(e){}});}
+  else{const lost=applyLeavePenalty(BOOT_MARK);BOOT_MARK=null;if(lost)toast('<div>You left a session unfinished and lost '+lost+' points. · سبت جلسة من غير ما تكملها وخسرت '+lost+' نقطة</div>',7000);}
   if(S.accountKey)syncSoon();
   if(S.accountKey&&!YEARS.some(y=>y.k===S.year)){setYear('y5');}
-  if(S.accountKey)authReady().then(()=>{if(!(FBA&&FBA.currentUser))noteNoAuth();});
+  if(S.accountKey)authReady().then(()=>{if(AUTHDEF&&!(FBA&&FBA.currentUser))noteNoAuth();});
   if(!S.accountKey){
     let AH='<div class="auth-panel gate-page"><div class="auth-logo">'+brandHTML()+'</div><div class="auth-kicker">'+ic('shield','sm')+' SECURE ACCOUNT ACCESS</div><h2 class="auth-title">Welcome back <span style="color:#7aa2ff">👋</span></h2><p class="auth-description">Sign in or create your account to keep your study progress and points synced across devices.<br><span class="ar">سجّل دخولك أو أنشئ حسابًا عشان نقاطك وتقدمك في المذاكرة يفضلوا محفوظين على كل أجهزتك.</span></p><button class="gbtn" id="gGo" type="button"><svg width="20" height="20" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.6 5.9c4.4-4.1 7-10.1 7-17.6z"/><path fill="#FBBC05" d="M10.5 28.7a14.5 14.5 0 010-9.4l-7.9-6.1a24 24 0 000 21.6l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.6-5.9c-2.1 1.4-4.9 2.3-8.3 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.1C6.5 42.6 14.6 48 24 48z"/></svg>Continue with Google · الدخول بجوجل</button><div class="auth-or">or use name &amp; password · أو بالاسم والباسورد</div><label class="auth-field" for="authName"><span class="auth-label"><span>Full name</span><span class="ar">الاسم</span></span><span class="auth-input-wrap">'+ic('user','auth-field-icon')+'<input type="text" id="authName" maxlength="20" autocomplete="username" placeholder="Enter your name" value="'+esc(S.name||'')+'"></span></label><label class="auth-field" for="authPass"><span class="auth-label"><span>Password</span><span class="ar">كلمة المرور</span></span><span class="auth-input-wrap">'+ic('lock','auth-field-icon')+'<input type="password" id="authPass" minlength="4" autocomplete="current-password" placeholder="At least 4 characters"></span></label><div class="auth-hint">'+ic('info')+'<span>If the name is new, an account will be created. If it already exists, enter its password to sign in.<br><span class="ar">لو الاسم جديد هنعمل حساب، ولو مسجّل قبل كده اكتب كلمة المرور الخاصة بيه.</span></span></div><button class="btn auth-submit" id="authGo">Continue <span aria-hidden="true">→</span> <span class="ar">دخول / إنشاء حساب</span></button><div class="auth-footer">'+ic('shield-check')+' Your progress is synced automatically across devices</div></div>';
     if(GOOGLE_ONLY)AH=AH.replace(/<div class="auth-or">[\s\S]*?<\/button><div class="auth-footer">/,'<div class="auth-footer">');
