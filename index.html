@@ -430,6 +430,25 @@ textarea.listening{border-color:#ef4444!important;box-shadow:0 0 0 3px rgba(239,
 .chbar select{flex:1;min-width:220px;max-width:100%;min-height:44px;background:var(--surface-2);color:var(--text);border:1px solid var(--border-2);border-radius:var(--r-md);padding:8px 12px;font:inherit;font-weight:700;font-size:14px;cursor:pointer}
 .chbar select:focus{outline:2px solid rgba(47,107,255,.55);outline-offset:1px}
 @media (max-width:600px){.chbar{padding:10px}.chbar select{min-width:100%}}
+
+.bnav,.toplogo{display:none}
+@media(max-width:860px){
+ .burger{display:none!important}
+ .toplogo{display:block;height:38px;width:auto;margin-inline-end:4px}
+ #ptitle{display:none}
+ .topbar{position:sticky;top:8px;margin:8px 12px 0;height:58px;padding:0 12px;border:1px solid var(--border);border-radius:22px;background:color-mix(in srgb,var(--surface) 92%,transparent);box-shadow:var(--sh)}
+ .bnav{display:flex;position:fixed;left:12px;right:12px;bottom:max(10px,env(safe-area-inset-bottom));height:68px;z-index:44;padding:0 6px 7px;border-radius:26px;background:var(--surface);border:1px solid var(--border);box-shadow:0 14px 40px -10px rgba(0,0,0,.45);align-items:flex-end;justify-content:space-around}
+ .bnav button{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:0;color:var(--muted);font:700 11px var(--font);position:relative;padding:0;cursor:pointer}
+ .bnav button i{display:grid;place-items:center;width:26px;height:26px;transition:all .2s}
+ .bnav button i svg{width:22px;height:22px}
+ .bnav button.on{color:var(--primary)}
+ .bnav button.on i{position:absolute;top:-30px;width:56px;height:56px;border-radius:50%;background:var(--surface);border:3px solid var(--primary);box-shadow:0 8px 20px -6px var(--primary-glow)}
+ .bnav button.on span{margin-top:30px}
+ .bnav button.on i svg{width:24px;height:24px}
+ #main{padding-bottom:112px}
+ .sidebar{z-index:46}
+ .app.open .bnav{z-index:40}
+}
 </style>
 </head>
 <body>
@@ -1687,7 +1706,7 @@ async function enterAccount(){
 }
 
 /* ================= Cloud state (Firebase is the source of truth) ================= */
-const NOCLOUD=['uid','accountKey','db','glinked','gauth','year','yearAt','name','rev','avatar','cover'];
+const NOCLOUD=['uid','accountKey','db','glinked','gauth','year','yearAt','name','rev','avatar','cover','avt'];
 let cloudReady=false,pushT=null;
 const badKey=k=>/[.#$\[\]\/]/.test(k);
 function cleanObj(o){if(Array.isArray(o))return o.map(cleanObj);if(o&&typeof o==='object'){const r={};for(const k of Object.keys(o)){if(badKey(k))continue;r[k]=cleanObj(o[k]);}return r;}return o;}
@@ -1718,7 +1737,7 @@ async function pullCloud(){
 async function syncNow(){if(!DB.ok())return;try{
   const wk=weekKey();if(!S.week||S.week.k!==wk)S.week={k:wk,p:0};
   if(S.name&&!identityReady)await syncIdentity();
-  await DB.patch('/players/'+S.uid,{name:S.name||'Player',pts:S.pts,lvl:lvlOf(S.pts),ans:S.ans,cor:S.cor,wk:S.week.k,wp:S.week.p,upd:{'.sv':'timestamp'},seen:{'.sv':'timestamp'}});
+  await DB.patch('/players/'+S.uid,{name:S.name||'Player',pts:S.pts,lvl:lvlOf(S.pts),ans:S.ans,cor:S.cor,wk:S.week.k,wp:S.week.p,av:S.avt||null,upd:{'.sv':'timestamp'},seen:{'.sv':'timestamp'}});
   if(S.name)await DB.put('/nameIndex/'+nameKey(S.name),{uid:S.uid,name:S.name});
 }catch(e){}}
 function addPoints(n,ok){
@@ -1756,9 +1775,9 @@ function applyTheme(){document.documentElement.dataset.theme=S.theme==='light'?'
 function isMobile(){return window.matchMedia&&matchMedia('(max-width:860px)').matches;}
 function shell(){
   applyLang();
-  $('#root').innerHTML='<div class="app'+(S.sbc?' sbc':'')+'" id="app"><aside class="sidebar"><div class="brand"><img class="blogo" src="'+LOGO+'" alt="RAFIQ رفيق"></div><nav class="nav" id="nav">'+NAV.map(n=>'<button data-go="'+n[0]+'" data-nav="'+n[0]+'" title="'+esc(tr(n[1],n[2]))+'">'+ic(n[3])+'<span>'+esc(tr(n[1],n[2]))+'</span></button>').join('')+'</nav></aside><div class="scrim" id="scrim"></div><div class="content"><header class="topbar"><button class="icon-btn burger" id="bg" aria-label="menu">'+ic('menu')+'</button><b id="ptitle" style="font-size:16px"></b><span class="sp"></span><button class="icon-btn langbtn" id="lg" data-act="lang" aria-label="language" title="'+esc(tr('العربية','English'))+'">'+(L()==='ar'?'EN':'ع')+'</button><button class="icon-btn" id="bell" aria-label="notifications"></button><div class="uwrap"><button class="avbtn" id="tav" aria-label="account" aria-haspopup="true"></button><div class="umenu" id="umenu" hidden><button data-go="profile">'+ic('user','sm')+'<span>'+esc(tr('Profile','الملف الشخصي'))+'</span></button><button data-go="settings">'+ic('gear','sm')+'<span>'+esc(tr('Settings','الإعدادات'))+'</span></button></div></div></header><main id="main"></main></div></div>';
+  $('#root').innerHTML='<div class="app'+(S.sbc?' sbc':'')+'" id="app"><aside class="sidebar"><div class="brand"><img class="blogo" src="'+LOGO+'" alt="RAFIQ رفيق"></div><nav class="nav" id="nav">'+NAV.map(n=>'<button data-go="'+n[0]+'" data-nav="'+n[0]+'" title="'+esc(tr(n[1],n[2]))+'">'+ic(n[3])+'<span>'+esc(tr(n[1],n[2]))+'</span></button>').join('')+'</nav></aside><div class="scrim" id="scrim"></div><div class="content"><header class="topbar"><button class="icon-btn burger" id="bg" aria-label="menu">'+ic('menu')+'</button><img class="toplogo" src="'+LOGO+'" alt="RAFIQ"><b id="ptitle" style="font-size:16px"></b><span class="sp"></span><button class="icon-btn langbtn" id="lg" data-act="lang" aria-label="language" title="'+esc(tr('العربية','English'))+'">'+(L()==='ar'?'EN':'ع')+'</button><button class="icon-btn" id="bell" aria-label="notifications"></button><div class="uwrap"><button class="avbtn" id="tav" aria-label="account" aria-haspopup="true"></button><div class="umenu" id="umenu" hidden><button data-go="profile">'+ic('user','sm')+'<span>'+esc(tr('Profile','الملف الشخصي'))+'</span></button><button data-go="settings">'+ic('gear','sm')+'<span>'+esc(tr('Settings','الإعدادات'))+'</span></button></div></div></header><main id="main"></main></div><nav class="bnav" id="bnav">'+[['study','Study','المذاكرة','book'],['subjects','Subjects','المواد','layers'],['dashboard','Home','الرئيسية','grid'],['arena','Arena','الأصدقاء','users']].map(n=>'<button data-go="'+n[0]+'" data-nav="'+n[0]+'"><i>'+ic(n[3])+'</i><span>'+esc(tr(n[1],n[2]))+'</span></button>').join('')+'<button id="bmore"><i>'+ic('menu')+'</i><span>'+esc(tr('More','المزيد'))+'</span></button></nav></div>';
   $('#bg').onclick=()=>{if(isMobile())$('#app').classList.toggle('open');else{$('#app').classList.toggle('sbc');S.sbc=$('#app').classList.contains('sbc');save();}};
-  $('#scrim').onclick=()=>$('#app').classList.remove('open');
+  $('#scrim').onclick=()=>$('#app').classList.remove('open');$('#bmore').onclick=()=>$('#app').classList.toggle('open');
   $('#bell').onclick=openNotes;
   $('#tav').onclick=e=>{e.stopPropagation();const m=$('#umenu');m.hidden=!m.hidden;};
   applyTheme();hdr();paintBell();paintDb();
@@ -1767,6 +1786,7 @@ document.addEventListener('click',e=>{const m=$('#umenu');if(m&&!m.hidden&&!e.ta
 window.addEventListener('online',()=>paintDb());window.addEventListener('offline',()=>paintDb());
 function isOnlineNow(){return navigator.onLine!==false&&DB.ok()&&DB.st!=='err';}
 function hdr(){
+  const bm=$('#bmore');if(bm)bm.classList.toggle('on',!document.querySelector('#bnav [data-nav].on'));
   const t=$('#tav');if(t){t.innerHTML=avatar(S.name||'Me','',undefined,S.avatar);t.classList.toggle('ring-on',isOnlineNow());t.classList.toggle('ring-off',!isOnlineNow());t.title=isOnlineNow()?tr('Online','متصل'):tr('Offline','غير متصل');}
 }
 let KEEP=0;function rr(f){KEEP=1;try{f();}finally{KEEP=0;}}
@@ -2161,7 +2181,7 @@ function bars(){return '';}
 function statCard(k,v,i,sub){return '<div class="card stat"><div class="k">'+k+'</div><div class="v">'+v+'</div><div class="sm-row" style="margin:2px 0 0;font-weight:500;color:var(--muted)">'+(sub||'')+'</div><span class="i">'+ic(i)+'</span></div>';}
 function mastCard(k){const m=topicMastery(k),a=topicAcc(k),n=ALL.filter(q=>q.tp===k).length;return '<button class="mast" data-act="subj" data-k="'+k+'"><div class="row sb"><b>'+T(k).ic+' '+T(k).en+'</b><b>'+m+'%</b></div><div class="a ar ar-opt">'+T(k).ar+'</div><div class="bar mt"><i style="width:'+m+'%"></i></div><div class="a" style="margin-top:6px">'+n+' questions'+(a===null?'':' · '+a+'% accuracy')+'</div></button>';}
 const CH_GAP=150;
-function lbRows(list,meUid,key,ch){const mi=list.findIndex(x=>x.uid===meUid);return list.map((p,i)=>'<div class="lrow'+(p.uid===meUid?' me':'')+(i===0?' top':'')+'" data-act="pv" data-u="'+esc(p.uid)+'" title="'+esc(tr('View profile','عرض البروفايل'))+'"><span class="rank r'+(i<3?i+1:'')+'">'+(i+1)+'</span>'+avatar(p.name,'',p.on===undefined?undefined:!!p.on)+'<div class="n">'+esc(p.name)+(i===0?ic('crown','crown'):'')+(p.uid===meUid?' <span class="tag">You</span>':'')+'<small>Level '+(p.lvl||lvlOf(p[key]||0))+'</small></div><div class="p">'+(p[key]||0)+'<small>pts</small></div>'+(ch&&mi>0&&i===mi-1&&p.on&&(p.pts||0)-(list[mi].pts||0)<=CH_GAP?'<button class="btn sm" data-act="chal" data-u="'+esc(p.uid)+'" data-n="'+esc(p.name)+'">⚔ Challenge</button>':'')+'</div>').join('');}
+function lbRows(list,meUid,key,ch){const mi=list.findIndex(x=>x.uid===meUid);return list.map((p,i)=>'<div class="lrow'+(p.uid===meUid?' me':'')+(i===0?' top':'')+'" data-act="pv" data-u="'+esc(p.uid)+'" title="'+esc(tr('View profile','عرض البروفايل'))+'"><span class="rank r'+(i<3?i+1:'')+'">'+(i+1)+'</span>'+avatar(p.name,'',p.on===undefined?undefined:!!p.on,p.av)+'<div class="n">'+esc(p.name)+(i===0?ic('crown','crown'):'')+(p.uid===meUid?' <span class="tag">You</span>':'')+'<small>Level '+(p.lvl||lvlOf(p[key]||0))+'</small></div><div class="p">'+(p[key]||0)+'<small>pts</small></div>'+(ch&&mi>0&&i===mi-1&&p.on&&(p.pts||0)-(list[mi].pts||0)<=CH_GAP?'<button class="btn sm" data-act="chal" data-u="'+esc(p.uid)+'" data-n="'+esc(p.name)+'">⚔ Challenge</button>':'')+'</div>').join('');}
 async function loadBoard(weekly){
   const o=await DB.get('/players')||{};
   let l=Object.keys(o).map(k=>Object.assign({uid:k},o[k])).filter(p=>(p.year||'y5')===curYear());
@@ -2197,8 +2217,14 @@ function buildProfile(){
 let profT=null,profLast=0;
 function profSoon(){if(!S.accountKey||!S.uid||!DB.ok())return;clearTimeout(profT);const wait=Math.max(5000,15000-(Date.now()-profLast));profT=setTimeout(pushProfile,wait);}
 async function pushProfile(){if(!S.accountKey||!S.uid||!DB.ok())return;profLast=Date.now();try{await DB.put('/profiles/'+S.uid,buildProfile());}catch(e){}}
-async function pushImages(){if(!S.accountKey||!S.uid||!DB.ok())return;try{await DB.put('/pimg/'+S.uid,{avatar:S.avatar||null,cover:S.cover||null});}catch(e){}}
-async function loadMyImages(){try{const o=await DB.get('/pimg/'+S.uid);if(o){S.avatar=o.avatar||'';S.cover=o.cover||'';save(true);hdr();}}catch(e){}}
+async function makeThumb(){
+  try{if(!S.avatar){S.avt='';return;}
+  const im=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=S.avatar;});
+  const c=document.createElement('canvas');c.width=c.height=56;const x=c.getContext('2d');const r=Math.max(56/im.naturalWidth,56/im.naturalHeight),w=im.naturalWidth*r,h=im.naturalHeight*r;x.drawImage(im,(56-w)/2,(56-h)/2,w,h);
+  let o=c.toDataURL('image/webp',.6);if(!/^data:image\/(webp|jpeg)/.test(o)||o.length>5500)o=c.toDataURL('image/jpeg',.5);S.avt=o.length<=5500?o:'';}catch(e){S.avt='';}
+}
+async function pushImages(){await makeThumb();save(true);if(S.accountKey&&S.uid&&DB.ok())DB.patch('/players/'+S.uid,{av:S.avt||null}).catch(()=>{});if(!S.accountKey||!S.uid||!DB.ok())return;try{await DB.put('/pimg/'+S.uid,{avatar:S.avatar||null,cover:S.cover||null});}catch(e){}}
+async function loadMyImages(){try{const o=await DB.get('/pimg/'+S.uid);if(o){S.avatar=o.avatar||'';S.cover=o.cover||'';if(S.avatar&&!S.avt){await makeThumb();DB.patch('/players/'+S.uid,{av:S.avt||null}).catch(()=>{});}save(true);hdr();}}catch(e){}}
 function ringCls(on){return on?'ring-on':'ring-off';}
 function pfStat(label,val,icon,sub){return '<div class="card stat"><div class="k">'+label+'</div><div class="v">'+val+'</div>'+(sub?'<div class="sm-row" style="margin:2px 0 0;font-weight:500;color:var(--muted)">'+sub+'</div>':'')+'<span class="si">'+ic(icon)+'</span></div>';}
 function weekBars(counts){
