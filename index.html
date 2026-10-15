@@ -2324,14 +2324,16 @@ async function nsfwModel(){
   if(NSFW)return NSFW;
   if(!window.tf)await loadScript('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.20.0/dist/tf.min.js');
   if(!window.nsfwjs)await loadScript('https://cdn.jsdelivr.net/npm/nsfwjs@2.4.2/dist/nsfwjs.min.js');
-  NSFW=await nsfwjs.load();return NSFW;
+  try{await tf.setBackend('webgl');}catch(e){try{await tf.setBackend('cpu');}catch(e2){}}
+  try{await tf.ready();}catch(e){}
+  NSFW=await nsfwjs.load('https://cdn.jsdelivr.net/gh/infinitered/nsfwjs@master/models/mobilenet_v2/');return NSFW;
 }
 async function nsfwCheck(canvas){
   try{
     const m=await Promise.race([nsfwModel(),sleep(45000).then(()=>{throw new Error('timeout');})]);
     const p=await m.classify(canvas);const g=c=>((p.find(x=>x.className===c)||{}).probability)||0;
     return (g('Porn')>0.30||g('Hentai')>0.35||g('Sexy')>0.55)?'bad':'ok';
-  }catch(e){return 'err';}
+  }catch(e){window.__nsfwErr=String(e&&e.message||e);return 'err';}
 }
 function fileToImage(f){return new Promise((res,rej)=>{const u=URL.createObjectURL(f);const im=new Image();im.onload=()=>{URL.revokeObjectURL(u);res(im);};im.onerror=()=>{URL.revokeObjectURL(u);rej(new Error('bad'));};im.src=u;});}
 function cropTo(im,W,H){
@@ -2365,7 +2367,7 @@ async function handleImage(kind,f){
   if(!$('#pvmsg'))return;
   if(r==='ok'){$('#pvmsg').textContent=tr('Looks good. You can save it.','الصورة تمام. تقدر تحفظها.');$('#pvmsg').style.color='var(--ok)';$('#pvsave').disabled=false;}
   else if(r==='bad'){PENDING_IMG=null;$('#pvmsg').textContent=tr('This image isn\'t allowed. Please choose a different one.','الصورة دي غير مسموحة. اختار صورة تانية.');$('#pvmsg').style.color='var(--bad)';}
-  else{PENDING_IMG=null;$('#pvmsg').textContent=tr('Couldn\'t verify the image right now. Check your connection and try again.','مقدرناش نفحص الصورة دلوقتي. تأكد من النت وجرّب تاني.');$('#pvmsg').style.color='var(--bad)';}
+  else{PENDING_IMG=null;$('#pvmsg').textContent=tr('Couldn\'t verify the image right now. Check your connection and try again.','مقدرناش نفحص الصورة دلوقتي. تأكد من النت وجرّب تاني.')+(window.__nsfwErr?' ['+window.__nsfwErr.slice(0,60)+']':'');$('#pvmsg').style.color='var(--bad)';}
 }
 let PENDING_IMG=null;
 ACT.pimgsave=async el=>{
