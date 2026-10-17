@@ -471,6 +471,7 @@ textarea.listening{border-color:#ef4444!important;box-shadow:0 0 0 3px rgba(239,
 .gate .auth-logo{margin:0 0 18px}.auth-logo{--bw:250px}.gate .auth-logo{--bw:270px}
 .brand .ba{--bw:176px;margin:6px auto 0}.toplogo.ba{--bw:92px}
 :root:not([data-theme="light"]) .ba{filter:brightness(1.5) saturate(1.15) drop-shadow(0 0 12px rgba(110,150,255,.28))}
+#adjn{width:120px!important}
 </style>
 </head>
 <body>
@@ -1839,7 +1840,7 @@ function maybeToast(levelUp){
   if(parts.length)toast(parts.map(p=>'<div>'+p+'</div>').join('<div style="height:6px"></div>')+'<small>اضغط لإغلاق الإشعار</small>',8000);
 }
 let NOTES=[],SEENN={};
-function paintBell(){const b=$('#bell');if(b)b.innerHTML=ic('bell')+((S.bell||NOTES.length)?'<span class="dot"></span>':'');}
+function paintBell(){const b=$('#bell');if(b)b.innerHTML=ic('bell')+((S.bell||NOTES.length||ANNS.length)?'<span class="dot"></span>':'');}
 
 /* ================= الإطار (القائمة الجانبية) ================= */
 /* ================= اللغة ================= */
@@ -1849,13 +1850,15 @@ function applyLang(){const ar=L()==='ar';document.documentElement.lang=ar?'ar':'
 const nfmt=n=>L()==='ar'?String(n).replace(/\d/g,d=>'٠١٢٣٤٥٦٧٨٩'[d]):String(n);
 /* ================= الإطار (القائمة الجانبية) ================= */
 const NAV=[['dashboard','Dashboard','لوحة التحكم','grid'],['study','Study & Practice','المذاكرة والتدريب','book'],['subjects','Subjects','المواد والمواضيع','layers'],['flash','Flashcards','البطاقات والجداول','cards'],['arena','Friends Arena','ساحة الأصدقاء','users'],['board','Global Leaderboard','المتصدرون','trophy'],['profile','Profile','الملف الشخصي','user']];
-const TITLE_X={settings:['Settings','الإعدادات'],pview:['Profile','الملف الشخصي'],arena:['Friends Arena','ساحة الأصدقاء']};
+function navItems(){return isAdmin()?NAV.concat([['admin','Admin Panel','لوحة الإدارة','shield-check']]):NAV;}
+let ANNS=[];
+const TITLE_X={admin:['Admin Panel','لوحة الإدارة'],settings:['Settings','الإعدادات'],pview:['Profile','الملف الشخصي'],arena:['Friends Arena','ساحة الأصدقاء']};
 function titleOf(v){const n=NAV.find(x=>x[0]===v);const t=n?[n[1],n[2]]:(TITLE_X[v]||['','']);return tr(t[0],t[1]);}
 function applyTheme(){document.documentElement.dataset.theme=S.theme==='light'?'light':'dark';const a=$('#app');if(a)a.classList.toggle('noar',!S.ar);}
 function isMobile(){return window.matchMedia&&matchMedia('(max-width:860px)').matches;}
 function shell(){
   applyLang();
-  $('#root').innerHTML='<div class="app'+(S.sbc?' sbc':'')+'" id="app"><aside class="sidebar"><div class="brand">'+brandHTML('blogo')+'</div><nav class="nav" id="nav">'+NAV.map(n=>'<button data-go="'+n[0]+'" data-nav="'+n[0]+'" title="'+esc(tr(n[1],n[2]))+'">'+ic(n[3])+'<span>'+esc(tr(n[1],n[2]))+'</span></button>').join('')+'</nav></aside><div class="scrim" id="scrim"></div><div class="content"><header class="topbar"><button class="icon-btn burger" id="bg" aria-label="menu">'+ic('menu')+'</button>'+brandHTML('toplogo')+'<b id="ptitle" style="font-size:16px"></b><span class="sp"></span><button class="icon-btn langbtn" id="lg" data-act="lang" aria-label="language" title="'+esc(tr('العربية','English'))+'">'+(L()==='ar'?'EN':'ع')+'</button><button class="icon-btn" id="bell" aria-label="notifications"></button><div class="uwrap"><button class="avbtn" id="tav" aria-label="account" aria-haspopup="true"></button><div class="umenu" id="umenu" hidden><button data-go="profile">'+ic('user','sm')+'<span>'+esc(tr('Profile','الملف الشخصي'))+'</span></button><button data-go="settings">'+ic('gear','sm')+'<span>'+esc(tr('Settings','الإعدادات'))+'</span></button></div></div></header><main id="main"></main></div><nav class="bnav" id="bnav">'+[['study','Study','المذاكرة','book'],['subjects','Subjects','المواد','layers'],['dashboard','Home','الرئيسية','grid'],['arena','Arena','الأصدقاء','users']].map(n=>'<button data-go="'+n[0]+'" data-nav="'+n[0]+'"><i>'+ic(n[3])+'</i><span>'+esc(tr(n[1],n[2]))+'</span></button>').join('')+'<button id="bmore"><i>'+ic('menu')+'</i><span>'+esc(tr('More','المزيد'))+'</span></button></nav></div>';
+  $('#root').innerHTML='<div class="app'+(S.sbc?' sbc':'')+'" id="app"><aside class="sidebar"><div class="brand">'+brandHTML('blogo')+'</div><nav class="nav" id="nav">'+navItems().map(n=>'<button data-go="'+n[0]+'" data-nav="'+n[0]+'" title="'+esc(tr(n[1],n[2]))+'">'+ic(n[3])+'<span>'+esc(tr(n[1],n[2]))+'</span></button>').join('')+'</nav></aside><div class="scrim" id="scrim"></div><div class="content"><header class="topbar"><button class="icon-btn burger" id="bg" aria-label="menu">'+ic('menu')+'</button>'+brandHTML('toplogo')+'<b id="ptitle" style="font-size:16px"></b><span class="sp"></span><button class="icon-btn langbtn" id="lg" data-act="lang" aria-label="language" title="'+esc(tr('العربية','English'))+'">'+(L()==='ar'?'EN':'ع')+'</button><button class="icon-btn" id="bell" aria-label="notifications"></button><div class="uwrap"><button class="avbtn" id="tav" aria-label="account" aria-haspopup="true"></button><div class="umenu" id="umenu" hidden><button data-go="profile">'+ic('user','sm')+'<span>'+esc(tr('Profile','الملف الشخصي'))+'</span></button><button data-go="settings">'+ic('gear','sm')+'<span>'+esc(tr('Settings','الإعدادات'))+'</span></button></div></div></header><main id="main"></main></div><nav class="bnav" id="bnav">'+[['study','Study','المذاكرة','book'],['subjects','Subjects','المواد','layers'],['dashboard','Home','الرئيسية','grid'],['arena','Arena','الأصدقاء','users']].map(n=>'<button data-go="'+n[0]+'" data-nav="'+n[0]+'"><i>'+ic(n[3])+'</i><span>'+esc(tr(n[1],n[2]))+'</span></button>').join('')+'<button id="bmore"><i>'+ic('menu')+'</i><span>'+esc(tr('More','المزيد'))+'</span></button></nav></div>';
   $('#bg').onclick=()=>{if(isMobile())$('#app').classList.toggle('open');else{$('#app').classList.toggle('sbc');S.sbc=$('#app').classList.contains('sbc');save();}};
   $('#scrim').onclick=()=>$('#app').classList.remove('open');$('#bmore').onclick=()=>$('#app').classList.toggle('open');
   $('#bell').onclick=openNotes;
@@ -2821,12 +2824,14 @@ function noteHtml(n){
   if(n.type==='challenge')return '<div class="li" style="align-items:flex-start"><div class="t"><b>⚔ '+esc(n.fromName)+' challenged you!</b><span>Duel: 10 questions'+(n.lbl?' · '+esc(n.lbl):'')+' · whoever scores more takes the higher rank. Declining costs you <b>10 pts</b>.<br><span class="ar">'+esc(n.fromName)+' بيتحداك! لو رفضت هيتخصم منك 10 نقاط.</span></span><div class="row mt"><button class="btn sm" data-act="chacc" data-id="'+n.id+'">Accept · قبول</button><button class="btn sm danger" data-act="chdec" data-id="'+n.id+'">Decline −10 · رفض</button></div></div></div>';
   if(n.type==='declined')return '<div class="li"><div class="t"><b>'+esc(n.fromName)+' declined your challenge</b><span>They lost 10 pts · اتخصم منه 10 نقاط</span></div></div>';
   if(n.type==='accepted')return '<div class="li"><div class="t"><b>'+esc(n.fromName)+' accepted your challenge!</b><span>Check your room lobby · ادخل اللوبي</span></div></div>';
+  if(n.type==='ann')return '<div class="li" style="align-items:flex-start"><div class="t"><b>📢 '+esc(n.title)+'</b><span>'+esc(n.body)+'</span><span class="sub">'+esc(n.by||'')+'</span></div></div>';
   return '';
 }
 function openNotes(){
   const k=Math.floor(Math.random()*DUAS.length);S.bell=0;save();
-  modal('<div class="row sb"><h2>Notifications</h2><button class="icon-btn" data-act="mclose" aria-label="close">'+ic('x')+'</button></div><div class="mt">'+(NOTES.length?NOTES.map(noteHtml).join(''):'<div class="empty">No new notifications · مفيش إشعارات</div>')+'</div><div class="card mt2" style="border-color:rgba(251,191,36,.35)"><div class="ar" style="font-size:14px">'+DUAS[k]+'</div><div class="ar" style="font-size:14px;margin-top:6px">'+DEAD[k%DEAD.length]+'</div></div>');
+  modal('<div class="row sb"><h2>Notifications</h2><button class="icon-btn" data-act="mclose" aria-label="close">'+ic('x')+'</button></div><div class="mt">'+(NOTES.length+ANNS.length?ANNS.concat(NOTES).map(noteHtml).join(''):'<div class="empty">No new notifications · مفيش إشعارات</div>')+'</div><div class="card mt2" style="border-color:rgba(251,191,36,.35)"><div class="ar" style="font-size:14px">'+DUAS[k]+'</div><div class="ar" style="font-size:14px;margin-top:6px">'+DEAD[k%DEAD.length]+'</div></div>');
   NOTES.filter(n=>n.type!=='challenge').forEach(n=>DB.req('DELETE','/inbox/'+S.uid+'/'+n.id).catch(()=>{}));
+  ANNS.forEach(n=>{S.annSeen[n.aid]=1;});ANNS=[];save();
   NOTES=NOTES.filter(n=>n.type==='challenge');paintBell();
 }
 ACT.mclose=()=>modal('');
@@ -2836,7 +2841,7 @@ async function pollInbox(){
     const o=await DB.get('/inbox/'+S.uid)||{};
     NOTES=Object.keys(o).map(k=>Object.assign({id:k},o[k])).sort((a,b)=>(b.ts||0)-(a.ts||0));
     NOTES.forEach(n=>{if(!SEENN[n.id]){SEENN[n.id]=1;toast('<div>'+(n.type==='challenge'?'⚔ '+esc(n.fromName)+' challenged you! Open the bell to answer · '+'تحدّاك '+esc(n.fromName):n.type==='declined'?esc(n.fromName)+' declined your challenge (−10 pts for them)':esc(n.fromName)+' accepted your challenge!')+'</div>',6000);}});
-    paintBell();
+    paintBell();pollAdmin();
   }catch(e){}
 }
 let CHP=null;
@@ -2892,6 +2897,138 @@ ACT.chdec=async function(el){
     await syncNow();paintBell();modal('');toast('<div>You declined and lost 10 pts · اتخصم منك 10 نقاط</div>',3500);
   }catch(e){toast('<div>Connection error</div>',2500);}
 };
+/* ================= لوحة الإدارة (Admin) ================= */
+const ADMIN_KEYS=['محمدعبدالله','محمدالشاذلي'];
+function isAdmin(){return ADMIN_KEYS.includes(S.accountKey);}
+const ADM={tab:'overview',year:'y1',wk:false,q:'',fy:'all',uid:null,players:null,anns:null,sort:'pts'};
+const YCOL={y1:'#2f6bff',y2:'#22c55e',y3:'#f59e0b',y5:'#a855f7'};
+const QTYPE={d:['Definitions','تعريفات'],c:['Complete','أكمل'],m:['MCQ','اختيار'],t:['True/False','صح/خطأ'],s:['Short','مقالي'],x:['Compare','مقارنة']};
+function admPlayers(){return Object.keys(ADM.players||{}).map(k=>Object.assign({uid:k},ADM.players[k],{year:(ADM.players[k].year||'y5')}));}
+function admOn(p){return Number(p.seen)>0&&Date.now()-Number(p.seen)<60000;}
+function admYName(k){const y=YEARS.find(x=>x.k===k);return y?tr(y.en,y.ar):k;}
+function admQ(f){return ALL.filter(f||(()=>true)).length;}
+function admSubStats(){return Object.keys(SUBJECTS).map(s=>{const chs=subChapters(s);const tops=new Set();chs.forEach(n=>CHAPTERS[n].topics.forEach(k=>tops.add(k)));const qs=ALL.filter(q=>tops.has(q.tp));const by={};qs.forEach(q=>by[q.t]=(by[q.t]||0)+1);return {key:s,yr:SUBJECTS[s].yr,en:SUBJECTS[s].en,ar:SUBJECTS[s].ar,ic:SUBJECTS[s].ic,chs,n:qs.length,by};});}
+function hbars(items,max){const m=max||Math.max(1,...items.map(i=>i.v));return items.map(i=>'<div style="margin:10px 0"><div class="row sb" style="font-size:13px;gap:8px"><span>'+i.l+'</span><b>'+nfmt(i.v)+'</b></div><div class="bar" style="margin-top:5px"><i style="display:block;height:100%;width:'+Math.max(2,Math.round(100*i.v/m))+'%;background:'+(i.c||'var(--primary)')+';border-radius:99px"></i></div></div>').join('');}
+function vbars(items){const m=Math.max(1,...items.map(i=>i.v));return '<div style="display:flex;align-items:flex-end;gap:10px;height:170px;padding-top:10px">'+items.map(i=>'<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;min-width:0"><b style="font-size:13px;margin-bottom:4px">'+nfmt(i.v)+'</b><div style="width:100%;max-width:56px;height:'+Math.max(3,Math.round(120*i.v/m))+'px;border-radius:10px 10px 4px 4px;background:linear-gradient(180deg,'+(i.c||'var(--primary)')+',color-mix(in srgb,'+(i.c||'var(--primary)')+' 45%,transparent))"></div><span class="sub" style="font-size:11px;margin-top:6px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%">'+i.l+'</span></div>').join('')+'</div>';}
+function donut(items,center){const tot=items.reduce((a,b)=>a+b.v,0)||1;let off=0;const R=52,C=2*Math.PI*R;const arcs=items.map(i=>{const len=C*i.v/tot;const s='<circle cx="70" cy="70" r="'+R+'" fill="none" stroke="'+i.c+'" stroke-width="18" stroke-dasharray="'+len+' '+(C-len)+'" stroke-dashoffset="'+(-off)+'" transform="rotate(-90 70 70)"/>';off+=len;return s;}).join('');return '<div class="row" style="gap:18px;align-items:center;flex-wrap:wrap"><svg viewBox="0 0 140 140" width="150" height="150"><circle cx="70" cy="70" r="'+R+'" fill="none" stroke="var(--surface-3)" stroke-width="18"/>'+arcs+'<text x="70" y="68" text-anchor="middle" font-size="22" font-weight="800" fill="currentColor">'+center[0]+'</text><text x="70" y="86" text-anchor="middle" font-size="10" fill="currentColor" opacity=".6">'+center[1]+'</text></svg><div style="flex:1;min-width:140px">'+items.map(i=>'<div class="row sb" style="font-size:13px;margin:6px 0"><span><i style="display:inline-block;width:10px;height:10px;border-radius:3px;background:'+i.c+';margin-inline-end:7px"></i>'+i.l+'</span><b>'+nfmt(i.v)+'</b></div>').join('')+'</div></div>';}
+function kpi(label,val,icon,sub){return '<div class="card stat"><div class="k">'+label+'</div><div class="v">'+val+'</div>'+(sub?'<div class="sub" style="margin-top:2px">'+sub+'</div>':'')+'</div>';}
+function admRow(p,i,key){const acc=p.ans?Math.round(100*p.cor/p.ans):0;return '<div class="lrow'+(i===0?' top':'')+'" data-act="admu" data-u="'+esc(p.uid)+'">'+(i===undefined?'':'<span class="rank r'+(i<3?i+1:'')+'">'+(i+1)+'</span>')+avatar(p.name,'',admOn(p),p.av)+'<div class="n">'+esc(p.name||'?')+'<small>'+esc(admYName(p.year))+' · '+tr('Level','المستوى')+' '+(p.lvl||lvlOf(p.pts||0))+' · '+acc+'%</small></div><div class="p">'+nfmt(key==='v'?p.v:(p.pts||0))+'<small>pts</small></div></div>';}
+function admTabs(){const T=[['overview','Overview','نظرة عامة'],['members','Members','الأعضاء'],['boards','Leaderboards','المتصدرون'],['content','Content','المحتوى'],['notify','Notifications','الإشعارات']];return '<div class="seg" style="overflow:auto;max-width:100%">'+T.map(t=>'<button class="'+(ADM.tab===t[0]?'on':'')+'" data-act="adtab" data-v="'+t[0]+'">'+tr(t[1],t[2])+'</button>').join('')+'</div>';}
+function admYearSeg(cur,act,all){return '<div class="seg" style="overflow:auto;max-width:100%">'+(all?'<button class="'+(cur==='all'?'on':'')+'" data-act="'+act+'" data-v="all">'+tr('All','الكل')+'</button>':'')+YEARS.map(y=>'<button class="'+(cur===y.k?'on':'')+'" data-act="'+act+'" data-v="'+y.k+'">'+esc(tr(y.en,y.ar))+'</button>').join('')+'</div>';}
+function admOverview(){
+  const P=admPlayers(),subs=admSubStats(),now=Date.now();
+  const on=P.filter(admOn).length,d1=P.filter(p=>now-Number(p.seen||0)<864e5).length,d7=P.filter(p=>now-Number(p.seen||0)<7*864e5).length;
+  const ans=P.reduce((a,p)=>a+(p.ans||0),0),cor=P.reduce((a,p)=>a+(p.cor||0),0),pts=P.reduce((a,p)=>a+(p.pts||0),0);
+  const wk=weekKey(),wkAct=P.filter(p=>p.wk===wk&&p.wp>0).length;
+  const nch=Object.keys(CHAPTERS).length,nq=ALL.length;
+  const byYear=YEARS.map(y=>({k:y.k,l:tr(y.en,y.ar),v:P.filter(p=>p.year===y.k).length,c:YCOL[y.k]}));
+  const types={};ALL.forEach(q=>types[q.t]=(types[q.t]||0)+1);
+  const tcol=['#2f6bff','#22c55e','#f59e0b','#a855f7','#ef4444','#14b8a6'];
+  const tItems=Object.keys(QTYPE).filter(k=>types[k]).map((k,i)=>({l:tr(QTYPE[k][0],QTYPE[k][1]),v:types[k],c:tcol[i%6]}));
+  const days=[];for(let i=6;i>=0;i--){const d=new Date(now-i*864e5);const a=new Date(d.getFullYear(),d.getMonth(),d.getDate()).getTime();days.push({l:d.toLocaleDateString(S.ar?'ar-EG':'en-GB',{weekday:'short'}),v:P.filter(p=>Number(p.seen)>=a&&Number(p.seen)<a+864e5).length,c:'var(--primary)'});}
+  const top=P.slice().sort((a,b)=>(b.pts||0)-(a.pts||0)).slice(0,5);
+  return '<div class="grid g4 mt2">'+kpi(tr('Members','الأعضاء'),nfmt(P.length),'',tr('registered','مسجل'))+kpi(tr('Online now','متصل الآن'),nfmt(on),'',nfmt(d1)+' '+tr('in 24h','في ٢٤ ساعة'))+kpi(tr('Active 7 days','نشط ٧ أيام'),nfmt(d7),'',nfmt(wkAct)+' '+tr('scored this week','حققوا نقاط الأسبوع'))+kpi(tr('Total points','إجمالي النقاط'),nfmt(pts),'','')+'</div>'+
+  '<div class="grid g4 mt">'+kpi(tr('Years','السنوات'),YEARS.length,'','')+kpi(tr('Subjects','المواد'),Object.keys(SUBJECTS).length,'',nfmt(nch)+' '+tr('chapters','شابتر'))+kpi(tr('Questions','الأسئلة'),nfmt(nq),'','')+kpi(tr('Answers / accuracy','الإجابات / الدقة'),nfmt(ans),'',(ans?Math.round(100*cor/ans):0)+'% '+tr('correct','صحيحة'))+'</div>'+
+  '<div class="grid g2 mt2"><div class="card"><h3>'+tr('Members per year','الأعضاء في كل سنة')+'</h3>'+vbars(byYear)+'</div><div class="card"><h3>'+tr('Last seen — last 7 days','آخر ظهور — آخر ٧ أيام')+'</h3>'+vbars(days)+'</div></div>'+
+  '<div class="grid g2 mt"><div class="card"><h3>'+tr('Questions by type','الأسئلة حسب النوع')+'</h3>'+donut(tItems,[nfmt(nq),tr('questions','سؤال')])+'</div><div class="card"><h3>'+tr('Questions per subject','الأسئلة في كل مادة')+'</h3>'+hbars(subs.slice().sort((a,b)=>b.n-a.n).map(s=>({l:s.ic+' '+esc(tr(s.en,s.ar)),v:s.n,c:YCOL[s.yr]})))+'</div></div>'+
+  '<div class="card mt"><h3>'+tr('Top 5 overall','أفضل ٥ لاعبين')+'</h3><div class="mt">'+top.map((p,i)=>admRow(p,i)).join('')+'</div></div>';
+}
+function admMembers(){
+  let P=admPlayers();const q=ADM.q.trim().toLowerCase();
+  if(ADM.fy!=='all')P=P.filter(p=>p.year===ADM.fy);if(q)P=P.filter(p=>String(p.name||'').toLowerCase().includes(q));
+  P.sort((a,b)=>(b.pts||0)-(a.pts||0));
+  return '<div class="row mt2" style="gap:10px;flex-wrap:wrap">'+admYearSeg(ADM.fy,'admfy',true)+'<input type="text" id="admq" placeholder="'+esc(tr('Search by name…','ابحث بالاسم…'))+'" value="'+esc(ADM.q)+'" style="flex:1;min-width:160px"></div><div class="sub mt">'+P.length+' '+tr('members','عضو')+'</div><div class="card mt" id="admlist">'+(P.length?P.slice(0,200).map((p,i)=>admRow(p,i)).join(''):'<div class="empty">'+tr('No members','لا يوجد أعضاء')+'</div>')+'</div>';
+}
+function admBoards(){
+  const wk=weekKey();let l=admPlayers().filter(p=>p.year===ADM.year).map(p=>Object.assign(p,{v:ADM.wk?(p.wk===wk?(Number(p.wp)||0):0):(p.pts||0)}));l.sort((a,b)=>b.v-a.v);
+  return '<div class="row mt2" style="gap:10px;flex-wrap:wrap">'+admYearSeg(ADM.year,'admby')+'<div class="seg"><button class="'+(ADM.wk?'':'on')+'" data-act="admwk" data-v="0">'+tr('All-time','الكل')+'</button><button class="'+(ADM.wk?'on':'')+'" data-act="admwk" data-v="1">'+tr('This week','الأسبوع')+'</button></div></div><div class="sub mt">'+l.length+' '+tr('players','لاعب')+'</div><div class="card mt">'+(l.length?l.slice(0,100).map((p,i)=>admRow(p,i,'v')).join(''):'<div class="empty">'+tr('No players in this year yet','لا يوجد لاعبون في هذه السنة بعد')+'</div>')+'</div>';
+}
+function admContent(){
+  const subs=admSubStats();
+  return '<div class="grid g4 mt2">'+kpi(tr('Years','السنوات'),YEARS.length,'','')+kpi(tr('Subjects','المواد'),subs.length,'','')+kpi(tr('Chapters','الشباتر'),Object.keys(CHAPTERS).length,'','')+kpi(tr('Questions','الأسئلة'),nfmt(ALL.length),'','')+'</div>'+
+  YEARS.map(y=>{const ss=subs.filter(s=>s.yr===y.k);const tot=ss.reduce((a,s)=>a+s.n,0);const mem=admPlayers().filter(p=>p.year===y.k).length;
+    return '<div class="card mt2"><div class="row sb" style="flex-wrap:wrap;gap:8px"><h3 style="margin:0"><i style="display:inline-block;width:10px;height:10px;border-radius:3px;background:'+YCOL[y.k]+';margin-inline-end:8px"></i>'+esc(tr(y.en,y.ar))+'</h3><span class="sub">'+ss.length+' '+tr('subjects','مواد')+' · '+nfmt(tot)+' '+tr('questions','سؤال')+' · '+mem+' '+tr('members','عضو')+'</span></div>'+
+    (ss.length?ss.map(s=>'<div class="card mt" style="background:var(--surface-2)"><div class="row sb" style="flex-wrap:wrap;gap:6px"><b>'+s.ic+' '+esc(tr(s.en,s.ar))+'</b><span class="sub">'+s.chs.length+' '+tr('chapters','شابتر')+' · '+nfmt(s.n)+' '+tr('questions','سؤال')+'</span></div><div class="row mt" style="gap:6px;flex-wrap:wrap">'+Object.keys(s.by).map(k=>'<span class="tag">'+esc(tr((QTYPE[k]||[k,k])[0],(QTYPE[k]||[k,k])[1]))+' '+s.by[k]+'</span>').join('')+'</div><div class="mt">'+s.chs.map(n=>'<div class="row sb" style="font-size:13px;padding:5px 0;border-top:1px solid var(--border)"><span>'+esc(tr(CHAPTERS[n].en,CHAPTERS[n].ar))+'</span><b>'+chCount(n)+'</b></div>').join('')+'</div></div>').join(''):'<div class="empty">'+tr('No subjects','لا توجد مواد')+'</div>')+'</div>';}).join('');
+}
+function admNotify(){
+  const A=ADM.anns?Object.keys(ADM.anns).map(k=>Object.assign({id:k},ADM.anns[k])).sort((a,b)=>(b.ts||0)-(a.ts||0)):[];
+  const tgt=a=>a.to==='all'?tr('All years','كل السنوات'):/^y\d$/.test(a.to)?admYName(a.to):((ADM.players&&ADM.players[a.to]&&ADM.players[a.to].name)||a.to);
+  return '<div class="card mt2"><h3>'+tr('Send a notification','إرسال إشعار')+'</h3><label class="sub mt">'+tr('To','إلى')+'</label><select id="annto"><option value="all">'+tr('All years','كل السنوات')+'</option>'+YEARS.map(y=>'<option value="'+y.k+'">'+esc(tr(y.en,y.ar))+'</option>').join('')+(ADM.nuid?'<option value="'+esc(ADM.nuid)+'" selected>'+esc(((ADM.players||{})[ADM.nuid]||{}).name||ADM.nuid)+'</option>':'')+'</select><label class="sub mt">'+tr('Title','العنوان')+'</label><input type="text" id="anntitle" maxlength="80" placeholder="'+esc(tr('Title','العنوان'))+'"><label class="sub mt">'+tr('Message','الرسالة')+'</label><textarea id="annbody" rows="4" maxlength="500" placeholder="'+esc(tr('Write your message…','اكتب رسالتك…'))+'"></textarea><button class="btn mt" data-act="annsend">'+ic('bell')+' '+tr('Send','إرسال')+'</button></div>'+
+  '<div class="card mt2"><h3>'+tr('Sent notifications','الإشعارات المرسلة')+'</h3>'+(A.length?A.map(a=>'<div class="li" style="align-items:flex-start"><div class="t"><b>'+esc(a.title||'')+'</b><span>'+esc(a.body||'')+'</span><span class="sub">→ '+esc(tgt(a))+' · '+new Date(a.ts||0).toLocaleString(S.ar?'ar-EG':'en-GB')+'</span></div><button class="btn sm danger" data-act="anndel" data-id="'+esc(a.id)+'">'+ic('x')+'</button></div>').join(''):'<div class="empty">'+tr('Nothing sent yet','لم يتم إرسال شيء بعد')+'</div>')+'</div>';
+}
+function admRender(){
+  if(cur.v!=='admin')return;
+  if(!isAdmin())return main('<div class="fade"><div class="card empty mt2"><h2>'+ic('shield')+'</h2><p>'+tr('This area is for administrators only.','هذه المنطقة للمشرفين فقط.')+'</p><p class="sub">'+tr('Your account key','مفتاح حسابك')+': <code>'+esc(S.accountKey||'—')+'</code></p></div></div>');
+  if(ADM.uid)return admMember();
+  const body=ADM.tab==='overview'?admOverview():ADM.tab==='members'?admMembers():ADM.tab==='boards'?admBoards():ADM.tab==='content'?admContent():admNotify();
+  main('<div class="fade"><div class="row sb" style="flex-wrap:wrap;gap:10px"><div><h1>'+ic('shield-check')+' '+tr('Admin Panel','لوحة الإدارة')+'</h1><div class="sub">'+tr('Platform overview and member management','نظرة شاملة على المنصة وإدارة الأعضاء')+'</div></div><button class="btn ghost sm" data-act="admref">'+tr('Refresh','تحديث')+'</button></div><div class="mt">'+admTabs()+'</div>'+(ADM.players?body:'<div class="sk mt2" style="height:260px"></div>')+'</div>');
+  const q=$('#admq');if(q)q.oninput=e=>{ADM.q=e.target.value;const pos=e.target.selectionStart;admRender();const n=$('#admq');if(n){n.focus();try{n.setSelectionRange(pos,pos);}catch(x){}}};
+}
+async function admMember(){
+  const uid=ADM.uid,p=(ADM.players||{})[uid]||{};
+  main('<div class="fade"><div class="sk" style="height:200px"></div></div>');
+  let P=null,I=null;
+  try{[P,I]=await Promise.all([DB.get('/profiles/'+uid),DB.get('/pimg/'+uid)]);}catch(e){}
+  if(cur.v!=='admin'||ADM.uid!==uid)return;
+  if(!P)P={name:p.name||'?',lvl:p.lvl||1,pts:p.pts||0,ans:p.ans||0,cor:p.cor||0,year:p.year||'y5',share:true};
+  P=Object.assign({},P,{name:P.name||p.name,pts:p.pts!=null?p.pts:P.pts,year:p.year||P.year});
+  const head='<div class="fade"><button class="btn ghost sm" data-act="admback">'+tr('Back','رجوع')+'</button><div class="card mt2"><div class="row sb" style="flex-wrap:wrap;gap:10px"><div><h3 style="margin:0">'+tr('Manage member','إدارة العضو')+': '+esc(P.name||'?')+'</h3><div class="sub">'+esc(admYName(P.year))+' · <b>'+nfmt(p.pts||0)+'</b> '+tr('points','نقطة')+' · '+(admOn(p)?tr('Online','متصل'):tr('Offline','غير متصل'))+'</div></div><button class="btn sm" data-act="admnote" data-u="'+esc(uid)+'">'+ic('bell')+' '+tr('Notify','إشعار')+'</button></div>'+
+  '<div class="row mt" style="gap:8px;flex-wrap:wrap"><input id="adjn" type="number" min="1" max="100000" placeholder="'+esc(tr('Points','النقاط'))+'" style="width:120px;flex:none"><input type="text" id="adjr" maxlength="60" placeholder="'+esc(tr('Reason (optional)','السبب (اختياري)'))+'" style="flex:1;min-width:140px"><button class="btn sm" data-act="admadj" data-s="1" data-u="'+esc(uid)+'">+ '+tr('Add','إضافة')+'</button><button class="btn sm danger" data-act="admadj" data-s="-1" data-u="'+esc(uid)+'">− '+tr('Remove','خصم')+'</button></div><div class="sub mt">'+tr('Applied the next time the member opens the app.','يُطبَّق عند فتح العضو للتطبيق في المرة القادمة.')+'</div></div></div>';
+  main(head+profileView(P,I||{},{own:false,online:admOn(p)}).replace('<div class="fade pf">','<div class="fade pf mt2">'));
+}
+VIEWS.admin=async function(){
+  if(!isAdmin())return admRender();
+  admRender();if(!DB.ok())return;
+  try{const [pl,an]=await Promise.all([DB.get('/players'),DB.get('/anns').catch(()=>null)]);ADM.players=pl||{};ADM.anns=an?flatAnns(an):{};}catch(e){ADM.players=ADM.players||{};toast('<div>'+tr('Could not load data','تعذر تحميل البيانات')+'</div>',3000);}
+  admRender();
+};
+function flatAnns(t){const o={};Object.keys(t).forEach(g=>{if(g==='u'){Object.keys(t.u).forEach(u=>Object.keys(t.u[u]).forEach(id=>o['u/'+u+'/'+id]=t.u[u][id]));}else Object.keys(t[g]).forEach(id=>o[g+'/'+id]=t[g][id]);});return o;}
+ACT.adtab=el=>{ADM.tab=el.dataset.v;ADM.uid=null;admRender();};
+ACT.admfy=el=>{ADM.fy=el.dataset.v;admRender();};
+ACT.admby=el=>{ADM.year=el.dataset.v;admRender();};
+ACT.admwk=el=>{ADM.wk=el.dataset.v==='1';admRender();};
+ACT.admu=el=>{ADM.uid=el.dataset.u;admRender();};
+ACT.admback=()=>{ADM.uid=null;admRender();};
+ACT.admref=()=>{ADM.players=null;ADM.uid=null;VIEWS.admin();};
+ACT.admnote=el=>{ADM.nuid=el.dataset.u;ADM.tab='notify';ADM.uid=null;admRender();};
+ACT.admadj=async el=>{
+  if(!isAdmin())return;const n=Math.floor(Number($('#adjn').value));if(!(n>0&&n<=100000))return toast('<div>'+tr('Enter a valid number of points','أدخل عدد نقاط صحيح')+'</div>',2500);
+  const d=n*Number(el.dataset.s),uid=el.dataset.u;
+  if(!confirm((d>0?tr('Add ','إضافة ')+n:tr('Remove ','خصم ')+n)+' '+tr('points?','نقطة؟')))return;
+  try{await DB.put('/adj/'+uid+'/a'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),{d,r:String($('#adjr').value||'').slice(0,60),by:S.name||'Admin',ts:Date.now()});toast('<div>'+tr('Saved. It will apply when the member opens the app.','تم الحفظ. سيُطبَّق عند فتح العضو للتطبيق.')+'</div>',3500);$('#adjn').value='';}catch(e){toast('<div>'+tr('Failed — check the rules were published','فشل — تأكد من نشر القواعد')+'</div>',4000);}
+};
+ACT.annsend=async el=>{
+  if(!isAdmin())return;const to=$('#annto').value,title=$('#anntitle').value.trim(),body=$('#annbody').value.trim();
+  if(!title||!body)return toast('<div>'+tr('Write a title and a message','اكتب عنوانًا ورسالة')+'</div>',2500);
+  const id='n'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+  const path=/^u/.test(to)&&to!=='all'?'/anns/u/'+to+'/'+id:'/anns/'+to+'/'+id;
+  try{await DB.put(path,{to,title:title.slice(0,80),body:body.slice(0,500),by:S.name||'Admin',ts:Date.now()});ADM.nuid=null;ADM.anns=flatAnns(await DB.get('/anns')||{});toast('<div>'+tr('Notification sent','تم إرسال الإشعار')+'</div>',2500);admRender();}catch(e){toast('<div>'+tr('Failed — check the rules were published','فشل — تأكد من نشر القواعد')+'</div>',4000);}
+};
+ACT.anndel=async el=>{if(!isAdmin()||!confirm(tr('Delete this notification?','حذف هذا الإشعار؟')))return;try{await DB.req('DELETE','/anns/'+el.dataset.id);delete ADM.anns[el.dataset.id];admRender();}catch(e){}};
+/* client side: announcements + point adjustments */
+S.adjDone=S.adjDone||{};S.annSeen=S.annSeen||{};
+let ANNPOLL=0;
+async function pollAdmin(){
+  if(!DB.ok()||!S.uid)return;
+  try{
+    const adj=await DB.get('/adj/'+S.uid)||{};let ch=false,tot=0;
+    for(const id of Object.keys(adj)){
+      if(!S.adjDone[id]){S.adjDone[id]=1;const d=Number(adj[id].d)||0;S.pts=Math.max(0,S.pts+d);if(S.week)S.week.p=Math.max(0,(S.week.p||0)+d);tot+=d;ch=true;}
+      DB.req('DELETE','/adj/'+S.uid+'/'+id).catch(()=>{});
+    }
+    if(ch){save();hdr();try{pushProfile();}catch(e){}syncNow();toast('<div>'+(tot>=0?'🎁 +':'⚠ ')+tot+' '+tr('points from the admin','نقطة من الإدارة')+'</div>',6000);}
+  }catch(e){}
+  if(Date.now()-ANNPOLL<15000)return;ANNPOLL=Date.now();
+  try{
+    const ps=['/anns/all','/anns/'+(S.year||'y5'),'/anns/u/'+S.uid];const rs=await Promise.all(ps.map(p=>DB.get(p).catch(()=>null)));
+    const base=S.annBase||(S.annBase=Date.now()-7*864e5);const out=[];
+    rs.forEach(o=>{if(o)Object.keys(o).forEach(id=>{const a=o[id];if(a&&a.ts>base&&!S.annSeen[id])out.push(Object.assign({id:'ann_'+id,aid:id,type:'ann'},a));});});
+    ANNS=out.sort((a,b)=>(b.ts||0)-(a.ts||0));
+    ANNS.forEach(n=>{if(!SEENN[n.id]){SEENN[n.id]=1;toast('<div>📢 <b>'+esc(n.title)+'</b></div>',6000);}});
+    paintBell();
+  }catch(e){}
+}
+
 setInterval(()=>{if(DB.ok()&&S.accountKey&&S.uid&&!document.hidden)DB.patch('/players/'+S.uid,{seen:{'.sv':'timestamp'}}).catch(()=>{});},20000);
 setInterval(pollInbox,6000);setTimeout(pollInbox,2500);
 
