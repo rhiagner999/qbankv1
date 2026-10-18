@@ -2899,8 +2899,9 @@ ACT.chdec=async function(el){
 };
 /* ================= لوحة الإدارة (Admin) ================= */
 const ADMIN_KEYS=['محمدعبدالله','محمدالشاذلي'];
-function isAdmin(){return ADMIN_KEYS.includes(S.accountKey);}
-const ADM={tab:'overview',year:'y1',wk:false,q:'',fy:'all',uid:null,players:null,anns:null,sort:'pts'};
+function isOwner(){return ADMIN_KEYS.includes(S.accountKey);}
+function isAdmin(){return isOwner()||!!S.admFlag;}
+const ADM={admins:{},tab:'overview',year:'y1',wk:false,q:'',fy:'all',uid:null,players:null,anns:null,sort:'pts'};
 const YCOL={y1:'#2f6bff',y2:'#22c55e',y3:'#f59e0b',y5:'#a855f7'};
 const QTYPE={d:['Definitions','تعريفات'],c:['Complete','أكمل'],m:['MCQ','اختيار'],t:['True/False','صح/خطأ'],s:['Short','مقالي'],x:['Compare','مقارنة']};
 function admPlayers(){return Object.keys(ADM.players||{}).map(k=>Object.assign({uid:k},ADM.players[k],{year:(ADM.players[k].year||'y5')}));}
@@ -2912,7 +2913,7 @@ function hbars(items,max){const m=max||Math.max(1,...items.map(i=>i.v));return i
 function vbars(items){const m=Math.max(1,...items.map(i=>i.v));return '<div style="display:flex;align-items:flex-end;gap:10px;height:170px;padding-top:10px">'+items.map(i=>'<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;min-width:0"><b style="font-size:13px;margin-bottom:4px">'+nfmt(i.v)+'</b><div style="width:100%;max-width:56px;height:'+Math.max(3,Math.round(120*i.v/m))+'px;border-radius:10px 10px 4px 4px;background:linear-gradient(180deg,'+(i.c||'var(--primary)')+',color-mix(in srgb,'+(i.c||'var(--primary)')+' 45%,transparent))"></div><span class="sub" style="font-size:11px;margin-top:6px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%">'+i.l+'</span></div>').join('')+'</div>';}
 function donut(items,center){const tot=items.reduce((a,b)=>a+b.v,0)||1;let off=0;const R=52,C=2*Math.PI*R;const arcs=items.map(i=>{const len=C*i.v/tot;const s='<circle cx="70" cy="70" r="'+R+'" fill="none" stroke="'+i.c+'" stroke-width="18" stroke-dasharray="'+len+' '+(C-len)+'" stroke-dashoffset="'+(-off)+'" transform="rotate(-90 70 70)"/>';off+=len;return s;}).join('');return '<div class="row" style="gap:18px;align-items:center;flex-wrap:wrap"><svg viewBox="0 0 140 140" width="150" height="150"><circle cx="70" cy="70" r="'+R+'" fill="none" stroke="var(--surface-3)" stroke-width="18"/>'+arcs+'<text x="70" y="68" text-anchor="middle" font-size="22" font-weight="800" fill="currentColor">'+center[0]+'</text><text x="70" y="86" text-anchor="middle" font-size="10" fill="currentColor" opacity=".6">'+center[1]+'</text></svg><div style="flex:1;min-width:140px">'+items.map(i=>'<div class="row sb" style="font-size:13px;margin:6px 0"><span><i style="display:inline-block;width:10px;height:10px;border-radius:3px;background:'+i.c+';margin-inline-end:7px"></i>'+i.l+'</span><b>'+nfmt(i.v)+'</b></div>').join('')+'</div></div>';}
 function kpi(label,val,icon,sub){return '<div class="card stat"><div class="k">'+label+'</div><div class="v">'+val+'</div>'+(sub?'<div class="sub" style="margin-top:2px">'+sub+'</div>':'')+'</div>';}
-function admRow(p,i,key){const acc=p.ans?Math.round(100*p.cor/p.ans):0;return '<div class="lrow'+(i===0?' top':'')+'" data-act="admu" data-u="'+esc(p.uid)+'">'+(i===undefined?'':'<span class="rank r'+(i<3?i+1:'')+'">'+(i+1)+'</span>')+avatar(p.name,'',admOn(p),p.av)+'<div class="n">'+esc(p.name||'?')+'<small>'+esc(admYName(p.year))+' · '+tr('Level','المستوى')+' '+(p.lvl||lvlOf(p.pts||0))+' · '+acc+'%</small></div><div class="p">'+nfmt(key==='v'?p.v:(p.pts||0))+'<small>pts</small></div></div>';}
+function admRow(p,i,key){const acc=p.ans?Math.round(100*p.cor/p.ans):0;return '<div class="lrow'+(i===0?' top':'')+'" data-act="admu" data-u="'+esc(p.uid)+'">'+(i===undefined?'':'<span class="rank r'+(i<3?i+1:'')+'">'+(i+1)+'</span>')+avatar(p.name,'',admOn(p),p.av)+'<div class="n">'+esc(p.name||'?')+(ADM.admins[p.uid]?' <span class="tag">'+tr('Admin','مشرف')+'</span>':'')+'<small>'+esc(admYName(p.year))+' · '+tr('Level','المستوى')+' '+(p.lvl||lvlOf(p.pts||0))+' · '+acc+'%</small></div><div class="p">'+nfmt(key==='v'?p.v:(p.pts||0))+'<small>pts</small></div></div>';}
 function admTabs(){const T=[['overview','Overview','نظرة عامة'],['members','Members','الأعضاء'],['boards','Leaderboards','المتصدرون'],['content','Content','المحتوى'],['notify','Notifications','الإشعارات']];return '<div class="seg" style="overflow:auto;max-width:100%">'+T.map(t=>'<button class="'+(ADM.tab===t[0]?'on':'')+'" data-act="adtab" data-v="'+t[0]+'">'+tr(t[1],t[2])+'</button>').join('')+'</div>';}
 function admYearSeg(cur,act,all){return '<div class="seg" style="overflow:auto;max-width:100%">'+(all?'<button class="'+(cur==='all'?'on':'')+'" data-act="'+act+'" data-v="all">'+tr('All','الكل')+'</button>':'')+YEARS.map(y=>'<button class="'+(cur===y.k?'on':'')+'" data-act="'+act+'" data-v="'+y.k+'">'+esc(tr(y.en,y.ar))+'</button>').join('')+'</div>';}
 function admOverview(){
@@ -2973,13 +2974,15 @@ async function admMember(){
   if(!P)P={name:p.name||'?',lvl:p.lvl||1,pts:p.pts||0,ans:p.ans||0,cor:p.cor||0,year:p.year||'y5',share:true};
   P=Object.assign({},P,{name:P.name||p.name,pts:p.pts!=null?p.pts:P.pts,year:p.year||P.year});
   const head='<div class="fade"><button class="btn ghost sm" data-act="admback">'+tr('Back','رجوع')+'</button><div class="card mt2"><div class="row sb" style="flex-wrap:wrap;gap:10px"><div><h3 style="margin:0">'+tr('Manage member','إدارة العضو')+': '+esc(P.name||'?')+'</h3><div class="sub">'+esc(admYName(P.year))+' · <b>'+nfmt(p.pts||0)+'</b> '+tr('points','نقطة')+' · '+(admOn(p)?tr('Online','متصل'):tr('Offline','غير متصل'))+'</div></div><button class="btn sm" data-act="admnote" data-u="'+esc(uid)+'">'+ic('bell')+' '+tr('Notify','إشعار')+'</button></div>'+
-  '<div class="row mt" style="gap:8px;flex-wrap:wrap"><input id="adjn" type="number" min="1" max="100000" placeholder="'+esc(tr('Points','النقاط'))+'" style="width:120px;flex:none"><input type="text" id="adjr" maxlength="60" placeholder="'+esc(tr('Reason (optional)','السبب (اختياري)'))+'" style="flex:1;min-width:140px"><button class="btn sm" data-act="admadj" data-s="1" data-u="'+esc(uid)+'">+ '+tr('Add','إضافة')+'</button><button class="btn sm danger" data-act="admadj" data-s="-1" data-u="'+esc(uid)+'">− '+tr('Remove','خصم')+'</button></div><div class="sub mt">'+tr('Applied the next time the member opens the app.','يُطبَّق عند فتح العضو للتطبيق في المرة القادمة.')+'</div></div></div>';
+  '<div class="row mt" style="gap:8px;flex-wrap:wrap"><input id="adjn" type="number" min="1" max="100000" placeholder="'+esc(tr('Points','النقاط'))+'" style="width:120px;flex:none"><input type="text" id="adjr" maxlength="60" placeholder="'+esc(tr('Reason (optional)','السبب (اختياري)'))+'" style="flex:1;min-width:140px"><button class="btn sm" data-act="admadj" data-s="1" data-u="'+esc(uid)+'">+ '+tr('Add','إضافة')+'</button><button class="btn sm danger" data-act="admadj" data-s="-1" data-u="'+esc(uid)+'">− '+tr('Remove','خصم')+'</button></div><div class="sub mt">'+tr('Applied the next time the member opens the app.','يُطبَّق عند فتح العضو للتطبيق في المرة القادمة.')+'</div>'+
+  '<div class="row mt2" style="gap:8px;flex-wrap:wrap;align-items:center"><b>'+tr('Academic year','السنة الدراسية')+':</b><select id="mvy" style="width:auto;min-width:160px">'+YEARS.map(y=>'<option value="'+y.k+'"'+(y.k===(p.year||'y5')?' selected':'')+'>'+esc(tr(y.en,y.ar))+'</option>').join('')+'</select><button class="btn sm" data-act="admmove" data-u="'+esc(uid)+'">'+tr('Move','نقل')+'</button></div>'+
+  (isOwner()?'<div class="row mt2" style="gap:8px;align-items:center"><b>'+tr('Admin access','صلاحية المشرف')+':</b>'+(ADM.admins[uid]?'<span class="tag">'+tr('Admin','مشرف')+'</span><button class="btn sm danger" data-act="admrole" data-u="'+esc(uid)+'" data-v="0">'+tr('Remove admin','إزالة الإشراف')+'</button>':'<button class="btn sm" data-act="admrole" data-u="'+esc(uid)+'" data-v="1">'+ic('shield-check')+' '+tr('Make admin','ترقية لمشرف')+'</button>')+'</div>':'')+'</div></div>';
   main(head+profileView(P,I||{},{own:false,online:admOn(p)}).replace('<div class="fade pf">','<div class="fade pf mt2">'));
 }
 VIEWS.admin=async function(){
   if(!isAdmin())return admRender();
   admRender();if(!DB.ok())return;
-  try{const [pl,an]=await Promise.all([DB.get('/players'),DB.get('/anns').catch(()=>null)]);ADM.players=pl||{};ADM.anns=an?flatAnns(an):{};}catch(e){ADM.players=ADM.players||{};toast('<div>'+tr('Could not load data','تعذر تحميل البيانات')+'</div>',3000);}
+  try{const [pl,an,ad]=await Promise.all([DB.get('/players'),DB.get('/anns').catch(()=>null),DB.get('/admins').catch(()=>null)]);ADM.players=pl||{};ADM.admins=ad||{};ADM.anns=an?flatAnns(an):{};}catch(e){ADM.players=ADM.players||{};toast('<div>'+tr('Could not load data','تعذر تحميل البيانات')+'</div>',3000);}
   admRender();
 };
 function flatAnns(t){const o={};Object.keys(t).forEach(g=>{if(g==='u'){Object.keys(t.u).forEach(u=>Object.keys(t.u[u]).forEach(id=>o['u/'+u+'/'+id]=t.u[u][id]));}else Object.keys(t[g]).forEach(id=>o[g+'/'+id]=t[g][id]);});return o;}
@@ -2997,6 +3000,17 @@ ACT.admadj=async el=>{
   if(!confirm((d>0?tr('Add ','إضافة ')+n:tr('Remove ','خصم ')+n)+' '+tr('points?','نقطة؟')))return;
   try{await DB.put('/adj/'+uid+'/a'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),{d,r:String($('#adjr').value||'').slice(0,60),by:S.name||'Admin',ts:Date.now()});toast('<div>'+tr('Saved. It will apply when the member opens the app.','تم الحفظ. سيُطبَّق عند فتح العضو للتطبيق.')+'</div>',3500);$('#adjn').value='';}catch(e){toast('<div>'+tr('Failed — check the rules were published','فشل — تأكد من نشر القواعد')+'</div>',4000);}
 };
+ACT.admmove=async el=>{
+  if(!isAdmin())return;const uid=el.dataset.u,y=$('#mvy').value,p=(ADM.players||{})[uid]||{};
+  if(y===(p.year||'y5'))return toast('<div>'+tr('Already in this year','العضو في هذه السنة بالفعل')+'</div>',2000);
+  if(!confirm(tr('Move ','نقل ')+(p.name||'')+' → '+admYName(y)+'?'))return;
+  try{const t=Date.now();await DB.patch('/players/'+uid,{year:y,yearAt:t});p.year=y;p.yearAt=t;toast('<div>'+tr('Moved','تم النقل')+'</div>',2500);admRender();}catch(e){toast('<div>'+tr('Failed — check the rules were published','فشل — تأكد من نشر القواعد')+'</div>',4000);}
+};
+ACT.admrole=async el=>{
+  if(!isOwner())return;const uid=el.dataset.u,on=el.dataset.v==='1',p=(ADM.players||{})[uid]||{};
+  if(!confirm((on?tr('Make ','ترقية ')+(p.name||'')+tr(' an admin?',' لمشرف؟'):tr('Remove admin access from ','إزالة الإشراف من ')+(p.name||'')+'?')))return;
+  try{if(on){await DB.put('/admins/'+uid,{name:p.name||'',by:S.name||'',ts:Date.now()});ADM.admins[uid]={name:p.name};}else{await DB.req('DELETE','/admins/'+uid);delete ADM.admins[uid];}toast('<div>'+tr('Saved','تم الحفظ')+'</div>',2000);admRender();}catch(e){toast('<div>'+tr('Failed — check the rules were published','فشل — تأكد من نشر القواعد')+'</div>',4000);}
+};
 ACT.annsend=async el=>{
   if(!isAdmin())return;const to=$('#annto').value,title=$('#anntitle').value.trim(),body=$('#annbody').value.trim();
   if(!title||!body)return toast('<div>'+tr('Write a title and a message','اكتب عنوانًا ورسالة')+'</div>',2500);
@@ -3010,6 +3024,15 @@ S.adjDone=S.adjDone||{};S.annSeen=S.annSeen||{};
 let ANNPOLL=0;
 async function pollAdmin(){
   if(!DB.ok()||!S.uid)return;
+  try{
+    const f=!!(await DB.get('/admins/'+S.uid));
+    if(f!==!!S.admFlag){S.admFlag=f;save();const nv=$('#nav');if(nv)nv.innerHTML=navItems().map(n=>'<button data-go="'+n[0]+'" data-nav="'+n[0]+'" title="'+esc(tr(n[1],n[2]))+'">'+ic(n[3])+'<span>'+esc(tr(n[1],n[2]))+'</span></button>').join('');document.querySelectorAll('[data-nav]').forEach(b=>b.classList.toggle('on',b.dataset.nav===cur.v));if(f)toast('<div>🛡 '+tr('You are now an admin','تم تعيينك مشرفًا')+'</div>',6000);}
+    const pr=await DB.get('/players/'+S.uid);
+    if(pr&&pr.year&&YEARS.some(y=>y.k===pr.year)&&pr.year!==S.year&&Number(pr.yearAt)>Number(S.yearAt||0)){
+      S.year=pr.year;S.yearAt=Number(pr.yearAt);{const ss=subjectsFor();if(ss.length&&!ss.includes(S.sub)){S.sub=ss[0];S.ch=+subChapters(S.sub)[0];}}
+      cfg.topics=new Set(chTopics());RCFG.topics=new Set(chTopics());saveCfg();save();toast('<div>🎓 '+tr('Your academic year was changed by the admin','تم تغيير سنتك الدراسية بواسطة الإدارة')+'</div>',6000);go('dashboard');
+    }
+  }catch(e){}
   try{
     const adj=await DB.get('/adj/'+S.uid)||{};let ch=false,tot=0;
     for(const id of Object.keys(adj)){
