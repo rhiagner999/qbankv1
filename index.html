@@ -472,6 +472,7 @@ textarea.listening{border-color:#ef4444!important;box-shadow:0 0 0 3px rgba(239,
 .brand .ba{--bw:176px;margin:6px auto 0}.toplogo.ba{--bw:92px}
 :root:not([data-theme="light"]) .ba{filter:brightness(1.5) saturate(1.15) drop-shadow(0 0 12px rgba(110,150,255,.28))}
 #adjn{width:120px!important}
+.yeargrid button:last-child:nth-child(odd){grid-column:1/-1}
 </style>
 </head>
 <body>
@@ -1582,7 +1583,7 @@ function subPool(){if(!subjectsFor().includes(S.sub))return [];const t=new Set()
 function chLabel(n){const same=subChapters(CHAPTERS[n].sub);const i=same.indexOf(String(n))+1;return CHAPTERS[n].en.replace(/Chapter \d+/,'Chapter '+i)+' — '+CHAPTERS[n].ar.replace(/الشابتر \d+/,'الشابتر '+i)+' ('+chCount(n)+')';}
 function chSelect(){
   const y=curYear(),subs=subjectsFor(y);
-  const yo=YEARS.find(x=>x.k===y)||YEARS[3];
+  const yo=YEARS.find(x=>x.k===y)||YEARS[4];
   const yr='<label>🎓 Year · السنة</label><span class="chip on" style="font-weight:800">'+yo.en+' — '+yo.ar+(yearLocked()?' 🔒':'')+'</span>'+(!yearLocked()?'<button class="btn ghost sm" data-act="yearchg">Change year · غيّر السنة</button>':'');
   if(!subs.length)return '<div class="chbar">'+yr+'<div class="sub" style="flex-basis:100%">No subjects for this year yet — coming soon. · لسه مفيش مواد للسنة دي، قريبًا.</div></div>';
   return '<div class="chbar">'+yr+'<label for="subsel">📖 Subject · المادة</label><select id="subsel" data-subsel>'+subs.map(s=>'<option value="'+s+'"'+(S.sub===s?' selected':'')+'>'+SUBJECTS[s].ic+' '+SUBJECTS[s].en+' — '+SUBJECTS[s].ar+'</option>').join('')+'</select><label for="chsel">📚 Chapter · الشابتر</label><select id="chsel" data-chsel>'+subChapters(S.sub).map(n=>'<option value="'+n+'"'+(+S.ch===+n?' selected':'')+'>'+chLabel(n)+'</option>').join('')+'</select></div>';
@@ -1917,7 +1918,7 @@ function go(v,a){stopMic();
 const ACT={};
 /* ================= تسجيل الدخول بـ Google + Onboarding ================= */
 const FBCFG={apiKey:'AIzaSyBc86nkjNXZuACMlw3UcpZdCOFdJUdt6Oo',authDomain:'qabank-6f97a.firebaseapp.com',projectId:'qabank-6f97a'};
-const YEARS=[{k:'y1',en:'1st year',ar:'الفرقة الأولى'},{k:'y2',en:'2nd year',ar:'الفرقة الثانية'},{k:'y3',en:'3rd year',ar:'الفرقة الثالثة'},{k:'y5',en:'5th year',ar:'الفرقة الخامسة'}];
+const YEARS=[{k:'y1',en:'1st Secondary',ar:'الصف الأول الثانوي'},{k:'y2',en:'2nd Secondary',ar:'الصف الثاني الثانوي'},{k:'y3',en:'3rd Secondary',ar:'الصف الثالث الثانوي'},{k:'y4',en:'Institute – Year 1',ar:'الصف الأول معهد'},{k:'y5',en:'Institute – Year 2',ar:'الصف الثاني معهد'}];
 function loadScript(src){return new Promise((res,rej)=>{const s=document.createElement('script');s.src=src;s.onload=res;s.onerror=()=>rej(new Error('script-load'));document.head.appendChild(s);});}
 let FBA=null,GU=null;
 async function fbAuth(){
@@ -2354,7 +2355,7 @@ function sessList(sess){
   return sess.map(s=>'<div class="li"><div class="t"><b>'+(s.m==='x'||s.mode==='exam'?tr('Exam','امتحان'):tr('Review','مراجعة'))+' · '+nfmt(s.a!==undefined?s.a:s.acc)+'%</b><span>'+ago(s.d!==undefined?s.d:s.date)+' · '+nfmt(s.c)+'/'+nfmt(s.n)+'</span></div></div>').join('');
 }
 function profileView(P,I,opts){
-  const own=!!opts.own,yo=YEARS.find(x=>x.k===(P.year||'y5'))||YEARS[3];
+  const own=!!opts.own,yo=YEARS.find(x=>x.k===(P.year||'y5'))||YEARS[4];
   const cover=I&&I.cover?'background-image:url('+I.cover+')':'';
   const acc=P.ans?Math.round(100*P.cor/P.ans):0;
   return '<div class="fade pf">'+
@@ -2902,7 +2903,7 @@ const ADMIN_KEYS=['محمدعبدالله','محمدالشاذلي'];
 function isOwner(){return ADMIN_KEYS.includes(S.accountKey);}
 function isAdmin(){return isOwner()||!!S.admFlag;}
 const ADM={admins:{},tab:'overview',year:'y1',wk:false,q:'',fy:'all',uid:null,players:null,anns:null,sort:'pts'};
-const YCOL={y1:'#2f6bff',y2:'#22c55e',y3:'#f59e0b',y5:'#a855f7'};
+const YCOL={y1:'#2f6bff',y2:'#22c55e',y3:'#f59e0b',y4:'#ec4899',y5:'#a855f7'};
 const QTYPE={d:['Definitions','تعريفات'],c:['Complete','أكمل'],m:['MCQ','اختيار'],t:['True/False','صح/خطأ'],s:['Short','مقالي'],x:['Compare','مقارنة']};
 function admPlayers(){return Object.keys(ADM.players||{}).map(k=>Object.assign({uid:k},ADM.players[k],{year:(ADM.players[k].year||'y5')}));}
 function admOn(p){return Number(p.seen)>0&&Date.now()-Number(p.seen)<60000;}
@@ -2922,7 +2923,8 @@ function admOverview(){
   const ans=P.reduce((a,p)=>a+(p.ans||0),0),cor=P.reduce((a,p)=>a+(p.cor||0),0),pts=P.reduce((a,p)=>a+(p.pts||0),0);
   const wk=weekKey(),wkAct=P.filter(p=>p.wk===wk&&p.wp>0).length;
   const nch=Object.keys(CHAPTERS).length,nq=ALL.length;
-  const byYear=YEARS.map(y=>({k:y.k,l:tr(y.en,y.ar),v:P.filter(p=>p.year===y.k).length,c:YCOL[y.k]}));
+  const YSH={y1:['Sec 1','أولى ثانوي'],y2:['Sec 2','ثانية ثانوي'],y3:['Sec 3','ثالثة ثانوي'],y4:['Inst 1','أولى معهد'],y5:['Inst 2','ثانية معهد']};
+  const byYear=YEARS.map(y=>({k:y.k,l:tr(YSH[y.k][0],YSH[y.k][1]),v:P.filter(p=>p.year===y.k).length,c:YCOL[y.k]}));
   const types={};ALL.forEach(q=>types[q.t]=(types[q.t]||0)+1);
   const tcol=['#2f6bff','#22c55e','#f59e0b','#a855f7','#ef4444','#14b8a6'];
   const tItems=Object.keys(QTYPE).filter(k=>types[k]).map((k,i)=>({l:tr(QTYPE[k][0],QTYPE[k][1]),v:types[k],c:tcol[i%6]}));
