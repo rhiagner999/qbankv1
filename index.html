@@ -151,6 +151,18 @@ input[type=range]{width:100%;accent-color:var(--primary)}
 .lrow .p{font-weight:800;text-align:end}.lrow .p small{display:block;color:var(--muted);font-size:11.5px;font-weight:500}
 /* ---- quiz ---- */
 .qcard{padding:22px}
+.wb{margin-top:8px}.wnote{color:var(--muted);font-size:13.5px;margin:2px 0 10px}
+.wans{min-height:52px;display:flex;flex-wrap:wrap;gap:8px;padding:10px;border:1px dashed var(--border-2);border-radius:var(--r-md);background:var(--surface-2);margin-bottom:10px}
+.wbank{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:6px}
+.wchip{font:inherit;font-weight:600;padding:8px 13px;border-radius:12px;border:1px solid var(--border-2);background:var(--surface-2);color:inherit;cursor:pointer;line-height:1.4}
+.wchip.ok{background:rgba(34,197,94,.14);border-color:var(--ok);cursor:default}
+.wchip.used{opacity:.25;cursor:default}.wchip.wbad{border-color:var(--bad);background:rgba(239,68,68,.16)}
+.wmsg{min-height:20px;text-align:center;color:var(--bad);font-weight:700;font-size:14px;opacity:0;transition:opacity .2s;margin:2px 0 4px}
+.wsents{display:flex;flex-direction:column;gap:12px;margin-bottom:12px}
+.wsent{font-size:17px;line-height:2.1;font-weight:600;padding:10px 12px;border:1px solid var(--border-2);border-radius:var(--r-md);background:var(--surface-2)}
+.wsa{font-size:14px;color:var(--muted);font-weight:500;line-height:1.7}
+.wblank{display:inline-block;min-width:78px;padding:0 10px;margin:0 4px;border-bottom:2px solid var(--primary);text-align:center;cursor:pointer;border-radius:6px 6px 0 0}
+.wblank.act{background:rgba(59,130,246,.18)}.wblank.ok{border-bottom-color:var(--ok);color:var(--ok);cursor:default}.wblank.no{border-bottom-color:var(--bad)}
 .qar:empty,.ar:empty,.a2:empty{display:none}
 .qen{font-size:19px;font-weight:700;line-height:1.45;margin:8px 0 4px}
 .qar{color:var(--muted);font-size:16.5px;line-height:1.8;margin:2px 0 14px}
@@ -2174,9 +2186,170 @@ function start(pool,mode,n){
   renderQ();
 }
 
+/* ===== Word-bank answering for written questions (d / c / s) ===== */
+const WB=(function(){
+  const BLK=/_{2,}|\.{4,}|…{2,}/g;
+  const cl=s=>String(s==null?'':s).replace(/\s+/g,' ').trim();
+  const nz=s=>cl(s).toLowerCase().replace(/[.,;:،؛!?()"'“”]/g,'');
+  function segs(q){
+    if(q._sg!==undefined)return q._sg;
+    let r=null;const n=(String(q.q).match(BLK)||[]).length;
+    if(n){
+      const a=cl(String(q.a).replace(/\([^)]*\)/g,' ')).replace(/[.。]+$/,'');
+      if(n===1)r=[a];
+      else{
+        const seps=[/\s*[;؛]\s*/,/\s*[،,]\s*/,/\s+(?=و\S)|\s+and\s+/i];
+        for(const sp of seps){
+          const p=a.split(sp).map(cl).filter(Boolean);
+          if(p.length===n){r=p.map((x,i)=>i?x.replace(/^و(?=\S)/,''):x);break;}
+        }
+      }
+      if(r&&r.some(x=>!x))r=null;
+    }
+    q._sg=r;return r;
+  }
+  function group(){
+    const i=G.i,q=G.queue[i];
+    const sg=segs(q);
+    if(!sg){G.cur.grp=null;return;}
+    const mem=[{q,idx:i,sg}];
+    for(let j=i+1;j<G.queue.length&&mem.length<4;j++){
+      const x=G.queue[j];
+      if(x.t!=='c'||mem.some(m=>m.q.id===x.id))continue;
+      const s2=segs(x);if(!s2)continue;
+      const pos=i+mem.length;
+      if(j!==pos){G.queue.splice(pos,0,G.queue.splice(j,1)[0]);G.st.splice(pos,0,G.st.splice(j,1)[0]);}
+      mem.push({q:G.queue[pos],idx:pos,sg:s2});
+    }
+    G.cur.grp=mem;
+  }
+  const dirOf=s=>AR(s)?'rtl':'ltr';
+  function chipHTML(c,k){return '<button type="button" class="wchip" dir="'+dirOf(c)+'" data-k="'+k+'">'+esc(c)+'</button>';}
+  function msg(t){const m=$('#wmsg');if(!m)return;m.textContent=t;m.style.opacity=1;clearTimeout(msg.t);msg.t=setTimeout(()=>{m.style.opacity=0;},1300);}
+  const WRONG='❌ إجابة خاطئة · Wrong answer — حاول تاني';
+  function bad(el){el.classList.add('wbad','shake');setTimeout(()=>el.classList.remove('wbad','shake'),450);msg(WRONG);}
+  function pool(q,test){
+    const same=ALL.filter(x=>x.id!==q.id&&test(x)&&x.tp===q.tp);
+    const rest=ALL.filter(x=>x.id!==q.id&&test(x)&&x.tp!==q.tp);
+    return shuffle(same).concat(shuffle(rest).slice(0,60));
+  }
+  /* ---------- sequential mode (definitions, short answers, complete-without-blanks) ---------- */
+  function chunks(q){
+    const t=cl(String(q.a).replace(/\n/g,' ')).split(' ').filter(Boolean);
+    const k=Math.max(1,Math.ceil(t.length/22)),out=[];
+    for(let i=0;i<t.length;i+=k)out.push(t.slice(i,i+k).join(' '));
+    return {out,k,t};
+  }
+  function startSeq(b,q){
+    const {out,k,t}=chunks(q);
+    const have=new Set(t.map(nz));
+    const want=Math.min(8,Math.max(3,Math.round(out.length*.3)));
+    const ds=[];
+    const ar=AR(q.a);
+    for(const x of pool(q,x=>(x.t==='d'||x.t==='c'||x.t==='s')&&x.a&&AR(x.a)===ar)){
+      if(ds.length>=want)break;
+      const w=cl(String(x.a).replace(/\n/g,' ')).split(' ').filter(Boolean);if(w.length<k)continue;
+      const st=Math.floor(Math.random()*(w.length-k+1)),c=w.slice(st,st+k);
+      if(c.some(y=>have.has(nz(y))))continue;
+      const s=c.join(' ');if(ds.includes(s)||out.includes(s))continue;ds.push(s);
+    }
+    const bank=shuffle(out.map((c,i)=>({c,d:0})).concat(ds.map(c=>({c,d:1}))));
+    let pos=0;
+    b.innerHTML='<textarea id="ta" style="display:none"></textarea><div class="wb"><div class="wnote ar">'+(ar?'اختار الكلمات بالترتيب لتكوين الإجابة الصحيحة':'Tap the words in order to build the correct answer · اختار الكلمات بالترتيب')+'</div><div class="wans" id="wans" dir="'+dirOf(q.a)+'"></div><div id="wmsg" class="wmsg"></div><div class="wbank" id="wbank">'+bank.map((x,i)=>chipHTML(x.c,i)).join('')+'</div></div>';
+    G.cur.wb=true;
+    $('#wbank').onclick=e=>{
+      const el=e.target.closest('.wchip');if(!el||G.cur.done||el.disabled)return;
+      const x=bank[+el.dataset.k];
+      if(x.c===out[pos]){
+        pos++;el.disabled=true;el.classList.add('used');
+        $('#wans').insertAdjacentHTML('beforeend','<span class="wchip ok" dir="'+dirOf(x.c)+'">'+esc(x.c)+'</span>');
+        if(pos===out.length){
+          document.querySelectorAll('#wbank .wchip').forEach(y=>y.disabled=true);
+          $('#ta').value=out.join(' ');check();
+        }
+      }else bad(el);
+    };
+  }
+  /* ---------- grouped fill-in-the-blanks ---------- */
+  function startGroup(b,mem){
+    const q=mem[0].q,ar=AR(q.q);
+    const ans=[];mem.forEach(m=>m.sg.forEach(s=>ans.push(s)));
+    const have=new Set(ans.map(nz));
+    const want=Math.min(8,Math.max(3,Math.round(ans.length*.5)));
+    const ds=[],ids=new Set(mem.map(m=>m.q.id));
+    for(const x of pool(q,x=>x.t==='c'&&!ids.has(x.id)&&AR(x.q)===ar&&segs(x))){
+      for(const s of segs(x)){
+        if(ds.length>=want)break;
+        if(have.has(nz(s))||ds.some(y=>nz(y)===nz(s)))continue;ds.push(s);
+      }
+      if(ds.length>=want)break;
+    }
+    const bank=shuffle(ans.map(c=>({c})).concat(ds.map(c=>({c}))));
+    let bi=0;
+    const sent=mem.map(m=>{
+      const parts=String(m.q.q).replace(/^\s*(أكمل|Complete)\s*[:：]\s*/i,'').split(BLK);
+      let h='';
+      parts.forEach((p,i)=>{h+=esc(p);if(i<m.sg.length){h+='<span class="wblank" data-b="'+(bi)+'" dir="'+dirOf(m.sg[i])+'">&nbsp;</span>';bi++;}});
+      return '<div class="wsent" dir="'+dirOf(m.q.q)+'">'+h+(m.q.qa?'<div class="wsa ar">'+esc(m.q.qa.replace(/^\s*أكمل\s*[:：]\s*/,''))+'</div>':'')+'</div>';
+    }).join('');
+    $('.qen').textContent=ar?'أكمل الفراغات في الجمل التالية':'Fill in the blanks in the sentences below';
+    const qa=$('.qar');if(qa)qa.textContent='';
+    b.innerHTML='<textarea id="ta" style="display:none"></textarea><div class="wb"><div class="wnote ar">اختار الكلمة المناسبة لكل فراغ · Pick the right word for each blank</div><div class="wsents">'+sent+'</div><div id="wmsg" class="wmsg"></div><div class="wbank" id="wbank">'+bank.map((x,i)=>chipHTML(x.c,i)).join('')+'</div></div>';
+    G.cur.wb=true;
+    const blanks=[...b.querySelectorAll('.wblank')];
+    let act=null,left=ans.length;
+    const first=()=>blanks.find(x=>!x.dataset.done);
+    blanks.forEach(x=>x.onclick=()=>{if(x.dataset.done||G.cur.done)return;blanks.forEach(y=>y.classList.remove('act'));act=x;x.classList.add('act');});
+    $('#wbank').onclick=e=>{
+      const el=e.target.closest('.wchip');if(!el||G.cur.done||el.disabled)return;
+      const tgt=(act&&!act.dataset.done)?act:first();
+      const x=bank[+el.dataset.k];
+      if(x.c===ans[+tgt.dataset.b]){
+        tgt.textContent=x.c;tgt.dataset.done=1;tgt.classList.remove('act');tgt.classList.add('ok');act=null;
+        el.disabled=true;el.classList.add('used');left--;
+        if(!left){
+          document.querySelectorAll('#wbank .wchip').forEach(y=>y.disabled=true);
+          finishGroup(mem,false);
+        }
+      }else bad(el);
+    };
+  }
+  function groupHTML(mem,ok,earned){
+    return '<div class="fb '+(ok?'ok':'no')+' fade"><div class="head"><span>'+(ok?'✅ Excellent! <span class="ar" style="font-size:14px;font-weight:600">· ممتاز! إجابة كاملة</span>':'Answer shown <span class="ar" style="font-size:14px;font-weight:600">· تم عرض الإجابة</span>')+'</span><span style="font-size:14px">+'+earned+' pts</span></div><div class="model"><div class="lbl">Model answer · الإجابة النموذجية</div>'+
+      mem.map(m=>'<p dir="auto">'+esc(m.q.q)+'</p><p dir="auto"><b>'+nl(m.q.a)+'</b></p>').join('')+'</div></div>';
+  }
+  function finishGroup(mem,shown){
+    const c=G.cur,exam=G.mode==='exam',base=TYPES.c.pts;let tot=0;
+    const save=G.i;
+    mem.forEach((m,k)=>{
+      G.i=m.idx;
+      let e=shown?0:(k===0?Math.max(0,base-c.hcost):base);
+      if(e>0&&G.retried[m.q.id])e=Math.floor(e/2);
+      tot+=e;
+      finalizeQ(m.q,{ratio:shown?0:1,yours:shown?'(shown)':m.sg.join(' ')},!shown,e,shown);
+    });
+    G.i=mem[mem.length-1].idx;
+    if(exam){const a=$('#acts');a.innerHTML='<div class="note" style="text-align:center;width:100%">✓ Saved · تم الحفظ</div>';setTimeout(()=>{G.pendingToast&&G.pendingToast();next();},350);return;}
+    $('#fb').innerHTML=groupHTML(mem,!shown,tot);$('#hint').innerHTML='';
+    if(G.pendingToast){const f=G.pendingToast;G.pendingToast=null;setTimeout(f,500);}
+    setDone();
+  }
+  function showGroup(){
+    const mem=G.cur.grp;
+    document.querySelectorAll('#wbank .wchip').forEach(y=>y.disabled=true);
+    document.querySelectorAll('.wblank').forEach(x=>{if(!x.dataset.done){x.classList.add('no');}});
+    finishGroup(mem,true);
+  }
+  function start(b,q){
+    if(q.t==='c'&&G.cur.grp)return startGroup(b,G.cur.grp);
+    startSeq(b,q);
+  }
+  return {group,start,showGroup};
+})();
 function renderQ(){
   const q=G.queue[G.i];
   G.cur={q,hint:0,hcost:0,done:false,sel:null,xs:{}};
+  if(q.t==='c')WB.group();
   const t=TYPES[q.t],tp=TOPICS[q.tp],exam=G.mode==='exam';
   const dots=G.queue.map((_,i)=>'<i class="'+(i===G.i?'cur':G.st[i]==='ok'?'ok':G.st[i]==='no'?'no':'')+'">'+(i+1)+'</i>').join('');
   main('<div class="fade"><div class="row sb"><div><h2>'+tp.ic+' '+tp.en+'</h2><div class="sub ar ar-opt">'+tp.ar+'</div></div><div class="row"><span class="pill" id="timer"></span><b>'+(G.i+1)+'/'+G.queue.length+'</b></div></div><div class="bar mt2"><i style="width:'+(G.i/G.queue.length*100)+'%"></i></div>'+
@@ -2184,7 +2357,7 @@ function renderQ(){
   '<div class="card mt2"><h3>Compact progress</h3><div class="dots">'+dots+'</div><div class="legend"><span><b style="background:var(--ok)"></b>Correct</span><span><b style="background:var(--bad)"></b>Wrong</span><span><b style="background:var(--primary)"></b>Current</span><span><b style="background:var(--surface-3)"></b>Pending</span></div></div></div>');
   const b=$('#body');
   if(q.t==='d'||q.t==='c'||q.t==='s'){
-    b.innerHTML='<textarea id="ta" rows="'+(q.t==='s'?8:q.t==='d'?4:3)+'" placeholder="'+(AR(q.q)?'اكتب إجابتك بالعربي…':'Write your answer in English… · اكتب إجابتك بالإنجليزي')+'"></textarea><div class="note ar" style="margin-top:6px">'+(AR(q.q)?'✍️ اكتب إجابتك بالعربي — مش لازم نفس الكلمات بالحرف، المهم المعنى والكلمات المفتاحية.':'✍️ اكتب إجابتك بالإنجليزي — مش لازم نفس الكلمات بالحرف، المهم المعنى والكلمات المفتاحية.')+'</div>'+micMarkup();micWire();
+    WB.start(b,q);
   }else if(q.t==='m'){
     b.innerHTML=q.o.map((o,i)=>'<button class="opt" data-i="'+i+'"><span class="rd"></span><span class="tx"><b>'+LT(i,o)+') '+esc(o)+'</b><span class="ar ar-opt">'+esc(q.oa[i])+'</span></span></button>').join('');
     b.querySelectorAll('.opt').forEach(x=>x.onclick=()=>{if(G.cur.done)return;G.cur.sel=+x.dataset.i;b.querySelectorAll('.opt').forEach(y=>y.classList.toggle('sel',y===x));$('#chk').disabled=false;});
@@ -2199,7 +2372,7 @@ function renderQ(){
   if(!exam)a+='<button class="btn ghost" id="hbtn">'+ic('bulb','sm')+' Hint · تلميح</button><button class="btn ghost" id="sbtn">'+ic('eye','sm')+' Show · الإجابة</button>';
   a+='<button class="btn big" id="chk"'+((q.t==='m'||q.t==='t'||q.t==='x')?' disabled':'')+'>'+(exam?'Next · التالي':'Check · تحقق')+'</button>';
   $('#acts').innerHTML=a;
-  $('#chk').onclick=check;
+  $('#chk').onclick=check;if(G.cur.wb)$('#chk').style.display='none';
   if(!exam){$('#hbtn').onclick=hint;$('#sbtn').onclick=showAns;}
   const tm=$('#timer');tm.innerHTML=ic('clock','sm')+' '+(G.mode==='exam'?fmt((G.deadline-Date.now())/1000):fmt((Date.now()-G.start)/1000));
 }
@@ -2285,6 +2458,7 @@ function check(){
 function showAns(){
   const c=G.cur,q=c.q;if(c.done)return;
   if(!confirm('تعرض الإجابة؟ السؤال هيتحسب غلط (0 نقطة)'+(q.t==='s'?' وهيتضاف لأسئلة الأخطاء بس.':' وهيرجع لك تاني.')))return;
+  if(c.grp){WB.showGroup();return;}
   finalizeQ(q,{ratio:0,yours:'(shown)'},false,0,true);
   showFeedback(q,{ratio:0,g:null},false,0,true);setDone();
 }
