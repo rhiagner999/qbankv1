@@ -4,6 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#070b16">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="رفيق">
 <title>RAFIQ | رفيق</title>
 <style>
 /* ===== RAFIQ — Modern SaaS design system (see Design.md) ===== */
@@ -151,6 +156,8 @@ input[type=range]{width:100%;accent-color:var(--primary)}
 .lrow .p{font-weight:800;text-align:end}.lrow .p small{display:block;color:var(--muted);font-size:11.5px;font-weight:500}
 /* ---- quiz ---- */
 .qcard{padding:22px}
+.pwa-i{position:fixed;inset-inline:16px;bottom:calc(16px + env(safe-area-inset-bottom));z-index:60;display:none;align-items:center;gap:10px;max-width:420px;margin-inline:auto;padding:10px 12px;border-radius:16px;background:var(--surface-2);border:1px solid var(--border-2);box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.pwa-i.on{display:flex}.pwa-i b{flex:1;font-size:14px}.pwa-i button{font:inherit;font-weight:700;border:0;border-radius:10px;padding:8px 14px;cursor:pointer;background:var(--primary);color:#fff}.pwa-i button.x{background:transparent;color:var(--muted);padding:8px}
 .wb{margin-top:8px}.wnote{color:var(--muted);font-size:13.5px;margin:2px 0 10px}
 .wans{min-height:52px;display:flex;flex-wrap:wrap;gap:8px;padding:10px;border:1px dashed var(--border-2);border-radius:var(--r-md);background:var(--surface-2);margin-bottom:10px}
 .wbank{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:6px}
@@ -3302,6 +3309,19 @@ boot();
 (function(){const SEL='.qen,.opt .tx,.model p,.xrow .st,.xrow .lab,.fc .e,.fc .a,#ta';let busy=0;
 function f(){if(busy)return;busy=1;try{document.querySelectorAll(SEL).forEach(e=>{if(e.getAttribute('dir')!=='auto')e.setAttribute('dir','auto')});}finally{busy=0}}
 new MutationObserver(f).observe(document.body,{childList:true,subtree:true});f();})();
+
+/* ===== PWA: install prompt + service worker ===== */
+(function(){
+  try{if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol))window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));}catch(e){}
+  let dp=null;const bar=document.createElement('div');bar.className='pwa-i';
+  bar.innerHTML='<b>ثبّت رفيق على جهازك 📲</b><button type="button" id="pwaGo">تثبيت</button><button type="button" class="x" id="pwaNo" aria-label="إغلاق">✕</button>';
+  document.body.appendChild(bar);
+  let hid=false;try{hid=sessionStorage.getItem('pwa_no')==='1';}catch(e){}
+  window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;if(!hid)bar.classList.add('on');});
+  window.addEventListener('appinstalled',()=>{dp=null;bar.classList.remove('on');});
+  bar.querySelector('#pwaGo').onclick=async()=>{if(!dp)return;bar.classList.remove('on');dp.prompt();try{await dp.userChoice;}catch(e){}dp=null;};
+  bar.querySelector('#pwaNo').onclick=()=>{bar.classList.remove('on');try{sessionStorage.setItem('pwa_no','1');}catch(e){}};
+})();
 </script>
 </body>
 </html>
