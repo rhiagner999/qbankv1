@@ -216,6 +216,15 @@ table.cmp th,table.cmp td{border:1px solid var(--border);padding:9px 8px;vertica
 table.cmp th{background:var(--primary-soft);font-size:13px}
 table.cmp td.l{font-weight:800;color:#8db0ff;width:22%;font-size:12.5px}
 table.cmp .a2{display:block;color:var(--muted);font-size:12.5px;margin-top:3px}
+/* ---- flashcards v2 ---- */
+.fcseg{max-width:460px}.fcseg button{white-space:nowrap}
+.fcard{max-width:640px;margin-left:auto;margin-right:auto;padding:22px}
+.fcq .e{font-size:20px;font-weight:700}.fcq .a,.fcans .a{color:var(--muted);margin-top:8px;font-size:16px}
+.fcans .e{font-size:17px;font-weight:600;white-space:pre-wrap}.fcans hr{border:0;border-top:1px solid var(--border);margin:16px 0}
+.fcl{font-size:12px;font-weight:800;color:var(--primary);margin-bottom:6px}
+.fcans:not([hidden]){animation:fcin .25s ease}@keyframes fcin{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.fcrate{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:640px;margin:0 auto}.fcrate .btn{min-height:50px;justify-content:center}
+#fcbox{max-width:680px;margin:0 auto}
 /* ---- arena ---- */
 .code{font-size:44px;font-weight:900;letter-spacing:8px;color:#7aa2ff;text-align:center;text-shadow:0 0 30px var(--primary-glow);font-variant-numeric:tabular-nums}
 .podium{display:grid;grid-template-columns:1fr 1.15fr 1fr;gap:10px;align-items:end;margin:6px 0 16px}
@@ -2628,7 +2637,7 @@ VIEWS.dashboard=function(){
   const qa=[
     ['act','qmis','refresh',tr('Review mistakes','راجع أخطاءك'),tr('Go back over the questions you got wrong and repeat them until you master each one.','ارجع للأسئلة اللي غلطت فيها وكرّرها لحد ما تتقنها.'),mis?tr(nfmt(mis)+' to review',nfmt(mis)+' سؤال للمراجعة'):tr('Nothing to review yet','لسه مفيش حاجة للمراجعة')],
     ['act','qexam','clock',tr('Quick exam','امتحان سريع'),tr('20 timed questions with no hints, to measure your real level before the exam.','٢٠ سؤال بوقت ومن غير تلميحات، تقيس بيهم مستواك الحقيقي قبل الامتحان.'),tr('20 questions','٢٠ سؤال')],
-    ['go','flash','cards',tr('Flashcards','البطاقات والجداول'),tr('Quick revision cards and comparison tables for last-minute study.','بطاقات وجداول مقارنة للمراجعة السريعة قبل الامتحان.'),tr('Revise fast','مراجعة سريعة')],
+    ['go','flash','ready',tr('Flashcards','البطاقات والجداول'),tr('Quick revision cards and comparison tables for last-minute study.','بطاقات وجداول مقارنة للمراجعة السريعة قبل الامتحان.'),tr('Revise fast','مراجعة سريعة')],
     ['go','arena','users',tr('Friends Arena','ساحة الأصدقاء'),tr('Create a room or join one with a code and compete with friends on the same questions.','اعمل روم أو ادخل بكود وتنافس مع صحابك على نفس الأسئلة.'),tr('Play together','العبوا سوا')]
   ];
   main('<div class="fade"><div class="card hero2"><div class="h2txt"><h1>'+esc(tr('Welcome back, '+(S.name||'Player'),'أهلاً بيك يا '+(S.name||'بطل')))+' 👋</h1><p class="sub">'+tr('Ready for today\'s session? Pick up right where you left off.','جاهز لمذاكرة النهارده؟ كمّل من حيث وقفت.')+'</p></div><button class="btn big xl" data-go="study">'+ic('play','sm')+' '+tr('Start Studying','ابدأ المذاكرة')+'</button></div>'+
@@ -2725,6 +2734,189 @@ VIEWS.flash=function(a){
   }
   draw();
 };
+
+/* ================= Flashcards v2: كروت رفيق + كروتي الخاصة + مراجعة ذكية ================= */
+const FC_MIN=60000,FC_DAY=864e5,FC_NEW=10,FC_MAXS=40;
+/* --- جدولة التكرار المتباعد (دالة نقية بدون واجهة) --- */
+function fcSchedule(rec,rating,now){
+  const r=rec?Object.assign({},rec):{reps:0,lapses:0,ivl:0,due:0,last:0,rating:'',first:now};
+  r.reps=(r.reps||0)+1;r.last=now;r.rating=rating;
+  if(rating==='again'){r.lapses=(r.lapses||0)+1;r.ivl=0;r.due=now+10*FC_MIN;}
+  else if(rating==='hard'){r.ivl=r.ivl<1?1:Math.round(Math.max(1,r.ivl*1.2)*10)/10;r.due=now+r.ivl*FC_DAY;}
+  else{r.ivl=r.ivl<1?(r.reps<=1?3:2):Math.min(365,Math.max(r.ivl+1,Math.round(r.ivl*2.5)));r.due=now+r.ivl*FC_DAY;}
+  return r;
+}
+const fcMastered=r=>!!r&&r.reps>=3&&r.ivl>=21&&r.rating!=='again';
+const fcEndDay=()=>{const d=new Date();d.setHours(23,59,59,999);return d.getTime();};
+let FCS=null,FCK='';
+const fcUid=()=>(FBA&&FBA.currentUser)?FBA.currentUser.uid:'';
+function fcLoad(){
+  const k='rhfc_v1_'+(fcUid()||'local');if(FCS&&FCK===k)return FCS;FCK=k;FCS=null;
+  try{FCS=JSON.parse(localStorage.getItem(k)||'null');}catch(e){}
+  FCS=FCS||{};FCS.cards=FCS.cards||{};FCS.prog=FCS.prog||{};FCS.prog.r=FCS.prog.r||{};FCS.prog.m=FCS.prog.m||{};FCS.days=FCS.days||{};FCS.dirty=FCS.dirty||{};
+  if(fcUid()){try{const lo=JSON.parse(localStorage.getItem('rhfc_v1_local')||'null');if(lo&&!FCS.migrated){
+    Object.keys(lo.cards||{}).forEach(id=>{if(!FCS.cards[id]){FCS.cards[id]=lo.cards[id];FCS.dirty['cards/'+id]=1;}});
+    ['r','m'].forEach(s=>Object.keys((lo.prog||{})[s]||{}).forEach(id=>{const a=lo.prog[s][id],b=FCS.prog[s][id];if(!b||a.last>b.last){FCS.prog[s][id]=a;FCS.dirty['prog/'+s+'/'+id]=1;}}));
+    Object.keys(lo.days||{}).forEach(d=>{if(!FCS.days[d]||lo.days[d].n>FCS.days[d].n){FCS.days[d]=lo.days[d];FCS.dirty['days/'+d]=1;}});
+    FCS.migrated=1;fcSave();}}catch(e){}}
+  return FCS;
+}
+function fcSave(){try{localStorage.setItem(FCK,JSON.stringify(FCS));}catch(e){}}
+function fcVal(p){const a=p.split('/');if(a[0]==='cards'){const c=FCS.cards[a[1]];if(!c)return null;const o=Object.assign({},c);delete o._s;o.owner=fcUid();return o;}if(a[0]==='prog')return FCS.prog[a[1]][a[2]]||null;if(a[0]==='days')return FCS.days[a[1]]||null;return null;}
+let fcPT=null,fcWarned=false,fcPulled=0;
+function fcPushSoon(){clearTimeout(fcPT);fcPT=setTimeout(fcPush,1500);}
+async function fcPush(){
+  const u=fcUid();if(!u||!DB.ok())return;fcLoad();const ks=Object.keys(FCS.dirty);if(!ks.length)return;
+  const up={};ks.forEach(p=>{up[p]=fcVal(p);});
+  try{await DB.patch('/flashcards/'+u,up);ks.forEach(p=>{delete FCS.dirty[p];if(p.startsWith('cards/')&&FCS.cards[p.slice(6)])FCS.cards[p.slice(6)]._s=1;});fcSave();}
+  catch(e){if(e.perm&&!fcWarned){fcWarned=true;toast(tr('Flashcards saved on this device only — cloud rules not enabled yet.','الكروت اتحفظت على الجهاز بس — قواعد السحابة لسه ما اتفعلتش.'),6000);}}
+}
+async function fcPull(force){
+  const u=fcUid();if(!u||!DB.ok())return false;if(!force&&Date.now()-fcPulled<60000)return false;fcPulled=Date.now();
+  let r;try{r=await DB.get('/flashcards/'+u);}catch(e){return false;}
+  fcLoad();r=r||{};let ch=false;
+  const rc=r.cards||{};
+  Object.keys(rc).forEach(id=>{const l=FCS.cards[id];if(!l||(rc[id].upd||0)>(l.upd||0)){if(!FCS.dirty['cards/'+id]){FCS.cards[id]=Object.assign({},rc[id],{_s:1});ch=true;}}});
+  Object.keys(FCS.cards).forEach(id=>{if(!rc[id]&&FCS.cards[id]._s&&!FCS.dirty['cards/'+id]){delete FCS.cards[id];ch=true;}});
+  ['r','m'].forEach(s=>{const rp=(r.prog||{})[s]||{};Object.keys(rp).forEach(id=>{const l=FCS.prog[s][id];if(!l||(rp[id].last||0)>(l.last||0)){if(!FCS.dirty['prog/'+s+'/'+id]){FCS.prog[s][id]=rp[id];ch=true;}}});});
+  const rd=r.days||{};Object.keys(rd).forEach(d=>{if(!FCS.days[d]||rd[d].n>FCS.days[d].n){if(!FCS.dirty['days/'+d]){FCS.days[d]=rd[d];ch=true;}}});
+  fcSave();fcPush();return ch;
+}
+/* --- بناء كروت رفيق من أسئلة المنصة (تعريفات + شورت أكاونت) حسب السنة --- */
+let FCR={y:'',list:[]};
+function fcReady(){
+  const y=curYear();if(FCR.y===y&&FCR.n===ALL.length)return FCR.list;
+  const tpc={};const subs=subjectsFor(y);
+  subs.forEach(s=>subChapters(s).forEach(n=>CHAPTERS[n].topics.forEach(t=>{tpc[t]={s:s,n:+n};})));
+  const hasDS={};ALL.forEach(q=>{if((q.t==='d'||q.t==='s')&&tpc[q.tp])hasDS[tpc[q.tp].s]=1;});
+  const list=[];
+  ALL.forEach(q=>{const m=tpc[q.tp];if(!m||!q.a)return;if(q.t==='d'||q.t==='s'||(q.t==='c'&&!hasDS[m.s]))list.push({id:q.id,src:'r',sub:m.s,ch:m.n,tp:q.tp,q:q.q,qa:q.qa||'',a:q.a,aa:q.aa||''});});
+  FCR={y:y,n:ALL.length,list:list};return list;
+}
+const fcMine=()=>{fcLoad();return Object.keys(FCS.cards).map(id=>Object.assign({id:id,src:'m'},FCS.cards[id]));};
+const fcRec=c=>{fcLoad();return FCS.prog[c.src][c.id]||null;};
+function fcStatus(c,now){const r=fcRec(c);if(!r)return 'new';return r.due<=(now||fcEndDay())?'due':'done';}
+function fcStats(list){const now=fcEndDay();let due=0,nw=0,ms=0;list.forEach(c=>{const s=fcStatus(c,now);if(s==='due')due++;else if(s==='new')nw++;if(fcMastered(fcRec(c)))ms++;});return {n:list.length,due:due,nw:nw,ms:ms};}
+function fcToday(){fcLoad();return FCS.days[dkey()]||{n:0,nw:0};}
+function fcStreak(){fcLoad();let n=0;const d=new Date();if(!(FCS.days[dkey(d)]||{}).n)d.setDate(d.getDate()-1);while((FCS.days[dkey(d)]||{}).n>0){n++;d.setDate(d.getDate()-1);}return n;}
+function fcNewLeft(){return Math.max(0,FC_NEW-(fcToday().nw||0));}
+function fcSmartPool(list){
+  const now=Date.now(),end=fcEndDay();const due=[],nw=[];
+  list.forEach(c=>{const r=fcRec(c);if(!r)nw.push(c);else if(r.due<=end)due.push(c);});
+  due.sort((a,b)=>fcRec(a).due-fcRec(b).due);
+  return due.concat(nw.slice(0,fcNewLeft())).slice(0,FC_MAXS);
+}
+/* --- جلسة المراجعة --- */
+let FSES=null;
+const fcSub=s=>SUBJECTS[s]?SUBJECTS[s].ic+' '+tr(SUBJECTS[s].en,SUBJECTS[s].ar):tr('General','عام');
+function fcFace(t,ta){return '<div class="e">'+esc(t)+'</div>'+(ta&&ta!==t?'<div class="a ar-opt">'+esc(ta)+'</div>':'');}
+function fcTabs(tab){const t=(k,en,ar)=>'<button class="'+(tab===k?'on':'')+'" data-go="flash" data-arg="'+k+'">'+tr(en,ar)+'</button>';return '<div class="seg mt fcseg">'+t('ready','Rafiq cards','كروت رفيق')+t('mine','My cards','كروتي')+t('cards','Quick deck','مراجعة سريعة')+t('tables','Tables','جداول')+'</div>';}
+function fcBack(arg,label){return '<button class="btn ghost sm" data-go="flash" data-arg="'+arg+'">← '+(label||tr('Back','رجوع'))+'</button>';}
+function fcStart(list,mode,shuf,back){
+  fcLoad();let cards=list.slice();
+  if(mode==='smart')cards=fcSmartPool(cards);else if(shuf)cards=shuffle(cards);
+  if(!cards.length){toast(tr('No cards to review here.','مفيش كروت للمراجعة هنا.'),2500);return;}
+  FSES={cards:cards,i:0,mode:mode,back:back,total:cards.length,done:0,shown:false,busy:false,res:{again:0,hard:0,good:0}};
+  fcDraw();
+}
+function fcDraw(){
+  const S2=FSES;if(!S2)return;
+  const box=$('#fcbox')||(main('<div class="fade"><div id="fcbox"></div></div>'),$('#fcbox'));
+  if(S2.mode==='smart'&&S2.i>=S2.cards.length||S2.mode==='normal'&&S2.i>=S2.cards.length){
+    box.innerHTML='<div class="card mt2 empty"><h2>🎉 '+tr('Session finished','خلصت الجلسة')+'</h2><p>'+(S2.mode==='smart'?tr('Reviewed','راجعت')+' '+S2.done+' · '+tr('Again','مش فاكر')+' '+S2.res.again+' · '+tr('Hard','بصعوبة')+' '+S2.res.hard+' · '+tr('Good','كويس')+' '+S2.res.good:tr('You went through all cards.','عديت على كل الكروت.'))+'</p><button class="btn mt" data-act="fcend">'+tr('Back to subject','رجوع للمادة')+'</button></div>';return;}
+  const c=S2.cards[S2.i],pos=S2.mode==='smart'?S2.done+1:S2.i+1,tot=S2.mode==='smart'?S2.total:S2.cards.length;
+  const r=fcRec(c);
+  box.innerHTML='<div class="row sb mt2"><b>'+Math.min(pos,tot)+' / '+tot+'</b><span class="row" style="gap:8px"><span class="tag '+(r?'':'g')+'">'+(r?tr('Review','مراجعة'):tr('New','جديد'))+'</span><span class="tag">'+(c.src==='r'?tr('Rafiq','رفيق'):tr('Mine','كروتي'))+'</span></span></div><div class="bar mt"><i style="width:'+((pos-1)/tot*100)+'%"></i></div>'
+  +'<div class="card fcard mt2" id="fcc"><div class="sub">'+fcSub(c.sub)+'</div><div class="fcq mt">'+fcFace(c.q,c.qa)+'</div><div id="fca" class="fcans" '+(S2.shown?'':'hidden')+'><hr><div class="fcl">'+tr('Answer','الإجابة')+'</div>'+fcFace(c.a,c.aa)+'</div></div>'
+  +'<div id="fcacts" class="mt2">'+(S2.shown?fcRateBtns():'<button class="btn block" data-act="fcshow">'+ic('eye')+' '+tr('Show answer','إظهار الإجابة')+'</button>')+'</div>'
+  +(S2.mode==='normal'?'<div class="row sb mt"><button class="btn ghost sm" data-act="fcprev" '+(S2.i?'':'disabled')+'>← '+tr('Prev','السابق')+'</button><button class="btn ghost sm" data-act="fcnext">'+tr('Next','التالي')+' →</button></div>':'')
+  +'<div class="mt2"><button class="btn ghost sm" data-act="fcend">'+tr('End session','إنهاء الجلسة')+'</button></div>';
+  const cc=$('#fcc');if(cc)cc.onclick=e=>{if(!S2.shown&&!e.target.closest('button'))ACT.fcshow();};
+}
+function fcRateBtns(){
+  if(FSES.mode==='normal')return '<div class="note">'+tr('Free review — does not change your smart schedule.','مراجعة حرة — مبتغيرش جدول المراجعة الذكية.')+'</div>';
+  return '<div class="fcrate"><button class="btn danger" data-act="fcrate" data-k="again">'+tr('Again','مش فاكر')+'</button><button class="btn warn" data-act="fcrate" data-k="hard">'+tr('Hard','فاكر بصعوبة')+'</button><button class="btn" data-act="fcrate" data-k="good">'+tr('Good','فاكر كويس')+'</button></div>';
+}
+ACT.fcshow=()=>{if(!FSES||FSES.shown)return;FSES.shown=true;const a=$('#fca');if(a)a.hidden=false;const b=$('#fcacts');if(b)b.innerHTML=fcRateBtns();};
+ACT.fcprev=()=>{if(FSES&&FSES.i>0){FSES.i--;FSES.shown=false;fcDraw();}};
+ACT.fcnext=()=>{if(FSES){FSES.i++;FSES.shown=false;fcDraw();}};
+ACT.fcend=()=>{const b=FSES?FSES.back:'ready';FSES=null;go('flash',b||'ready');};
+ACT.fcrate=el=>{
+  const S2=FSES;if(!S2||S2.busy||!S2.shown||S2.mode!=='smart')return;S2.busy=true;
+  const c=S2.cards[S2.i],k=el.dataset.k;if(!['again','hard','good'].includes(k)){S2.busy=false;return;}
+  fcLoad();const old=FCS.prog[c.src][c.id]||null,now=Date.now();
+  const nr=fcSchedule(old,k,now);nr.synced=0;FCS.prog[c.src][c.id]=nr;FCS.dirty['prog/'+c.src+'/'+c.id]=1;
+  const d=dkey(),dd=FCS.days[d]||{n:0,nw:0};dd.n++;if(!old)dd.nw=(dd.nw||0)+1;FCS.days[d]=dd;FCS.dirty['days/'+d]=1;
+  fcSave();fcPushSoon();S2.res[k]++;
+  if(k==='again'){S2.cards.push(c);}else S2.done++;
+  if(k==='again'&&S2.cards.length>S2.total+20){}
+  S2.i++;S2.shown=false;S2.busy=false;fcDraw();
+};
+/* --- كروت رفيق --- */
+function fcSubList(){return subjectsFor(curYear());}
+VIEWS.flashOld=VIEWS.flash;
+VIEWS.flash=function(a){
+  a=a||'ready';const p=String(a).split('|'),tab=p[0];
+  if(tab==='cards'||tab==='tables'){VIEWS.flashOld(tab);const sg=$('#main .seg');if(sg)sg.outerHTML=fcTabs(tab);return;}
+  fcLoad();if(tab==='mine')return fcMineView(p);
+  return fcReadyView(p);
+};
+function fcSyncBanner(){return fcUid()?'':'<div class="note mt2">'+tr('Sign in with Google to save your flashcards and progress in the cloud and on your other devices. For now they are saved on this device only.','سجّل دخولك بجوجل عشان كروتك وتقدمك يتحفظوا على السحابة ويظهروا على أجهزتك التانية. دلوقتي محفوظين على الجهاز ده بس.')+'</div>';}
+function fcAfterPull(arg){fcPull().then(ch=>{if(ch&&cur.v==='flash'&&!FSES&&String(cur.a||'ready')===String(arg))VIEWS.flash(arg);}).catch(()=>{});}
+function fcReadyView(p){
+  const list=fcReady(),sub=p[1],y=YEARS.find(x=>x.k===curYear())||YEARS[4];
+  if(sub&&SUBJECTS[sub]&&SUBJECTS[sub].yr===curYear()){
+    const sl=list.filter(c=>c.sub===sub),st=fcStats(sl);
+    main('<div class="fade"><h1>'+tr('Rafiq cards','كروت رفيق')+'</h1>'+fcTabs('ready')+'<div class="mt2">'+fcBack('ready',tr('Subjects','المواد'))+'</div><div class="card mt2"><h3>'+fcSub(sub)+'</h3><div class="row wrap mt" style="gap:8px"><span class="tag">'+st.n+' '+tr('cards','كارت')+'</span><span class="tag w">'+st.due+' '+tr('due','مستحق')+'</span><span class="tag g">'+st.nw+' '+tr('new','جديد')+'</span></div><div class="row wrap mt2" style="gap:8px"><button class="btn" data-act="fcgo" data-sub="'+sub+'" data-ch="" data-m="smart">'+tr('Smart review','مراجعة ذكية')+'</button><button class="btn ghost" data-act="fcgo" data-sub="'+sub+'" data-ch="" data-m="normal">'+tr('Normal review','مراجعة عادية')+'</button></div><label class="row mt" style="gap:8px"><input type="checkbox" id="fcsh"> '+tr('Shuffle (normal review)','ترتيب عشوائي (للمراجعة العادية)')+'</label></div>'
+    +'<div class="mt2">'+subChapters(sub).map(n=>{const cl=sl.filter(c=>c.ch===+n),s2=fcStats(cl);if(!cl.length)return '';return '<div class="card mt"><div class="row sb wrap"><div><b>'+esc(tr(CHAPTERS[n].en,CHAPTERS[n].ar))+'</b><div class="row wrap" style="gap:6px;margin-top:6px"><span class="tag">'+s2.n+'</span><span class="tag w">'+s2.due+' '+tr('due','مستحق')+'</span><span class="tag g">'+s2.nw+' '+tr('new','جديد')+'</span></div></div><div class="row" style="gap:6px"><button class="btn sm" data-act="fcgo" data-sub="'+sub+'" data-ch="'+n+'" data-m="smart">'+tr('Smart','ذكية')+'</button><button class="btn ghost sm" data-act="fcgo" data-sub="'+sub+'" data-ch="'+n+'" data-m="normal">'+tr('Normal','عادية')+'</button></div></div></div>';}).join('')+'</div></div>');
+    return;
+  }
+  const all=fcStats(list),td=fcToday(),subs=fcSubList();
+  main('<div class="fade"><h1>'+tr('Rafiq cards','كروت رفيق')+'</h1><div class="sub">'+esc(tr(y.en,y.ar))+'</div>'+fcTabs('ready')+fcSyncBanner()
+  +'<div class="card mt2"><h3>'+tr('Today\'s review','مراجعة النهاردة')+'</h3><div class="grid g3 mt"><div class="li"><div class="t"><b>'+all.due+'</b><span>'+tr('Due today','مستحق اليوم')+'</span></div></div><div class="li"><div class="t"><b>'+Math.min(all.nw,fcNewLeft())+'</b><span>'+tr('New available','جديد متاح')+'</span></div></div><div class="li"><div class="t"><b>'+(td.n||0)+'</b><span>'+tr('Reviewed today','اتراجع اليوم')+'</span></div></div></div>'
+  +(all.due+Math.min(all.nw,fcNewLeft())?'<button class="btn block mt2" data-act="fcgo" data-sub="" data-ch="" data-m="smart">'+tr('Start smart review','ابدأ المراجعة الذكية')+'</button>':'<div class="note mt2">'+tr('Nothing due today 🎉 You can practice with normal review.','مفيش كروت مستحقة النهاردة 🎉 تقدر تراجع مراجعة عادية.')+'</div>')+(all.due>FC_MAXS?'<div class="sub mt">'+tr('You have many overdue cards — each session shows '+FC_MAXS+'.','عندك كروت متأخرة كتير — كل جلسة بتعرض '+FC_MAXS+'.')+'</div>':'')+'</div>'
+  +(subs.length?'<div class="grid g3 mt2">'+subs.map(s=>{const sl=list.filter(c=>c.sub===s),st=fcStats(sl);return '<div class="card lrow" data-go="flash" data-arg="ready|'+s+'" style="cursor:pointer"><h3>'+fcSub(s)+'</h3><div class="row wrap mt" style="gap:6px"><span class="tag">'+st.n+' '+tr('cards','كارت')+'</span><span class="tag w">'+st.due+' '+tr('due','مستحق')+'</span><span class="tag g">'+st.nw+' '+tr('new','جديد')+'</span></div></div>';}).join('')+'</div>':'<div class="card mt2 empty"><p>'+tr('No subjects for this year yet.','لسه مفيش مواد للسنة دي.')+'</p></div>')+'</div>');
+  fcAfterPull('ready');
+}
+ACT.fcgo=el=>{const sub=el.dataset.sub,ch=el.dataset.ch;let l=fcReady();if(sub)l=l.filter(c=>c.sub===sub);if(ch)l=l.filter(c=>c.ch===+ch);const sh=!!($('#fcsh')&&$('#fcsh').checked);main('<div class="fade"><div id="fcbox"></div></div>');fcStart(l,el.dataset.m,sh,'ready'+(sub?'|'+sub:''));};
+/* --- كروتي الخاصة --- */
+let FQ={q:'',sub:'',st:''};
+function fcFilter(){const now=fcEndDay();const qq=FQ.q.trim().toLowerCase();return fcMine().filter(c=>(!FQ.sub||c.sub===FQ.sub)&&(!FQ.st||fcStatus(c,now)===FQ.st)&&(!qq||(c.q+' '+c.a+' '+(c.tp||'')).toLowerCase().includes(qq))).sort((a,b)=>(b.upd||0)-(a.upd||0));}
+function fcListHtml(){
+  const l=fcFilter(),now=fcEndDay();
+  if(!fcMine().length)return '<div class="card mt2 empty"><p>'+tr('You have no personal cards yet. Create your first one!','لسه معندكش كروت خاصة. اعمل أول كارت!')+'</p></div>';
+  if(!l.length)return '<div class="card mt2 empty"><p>'+tr('No cards match your search.','مفيش كروت مطابقة للبحث.')+'</p></div>';
+  return l.map(c=>{const s=fcStatus(c,now);return '<div class="card mt"><div class="row sb wrap"><div style="flex:1;min-width:200px"><div class="row wrap" style="gap:6px;margin-bottom:6px"><span class="tag '+(s==='new'?'g':s==='due'?'w':'')+'">'+(s==='new'?tr('New','جديد'):s==='due'?tr('Due','مستحق'):tr('Reviewed','اتراجع'))+'</span><span class="tag">'+fcSub(c.sub)+'</span>'+(c.tp?'<span class="tag">'+esc(c.tp)+'</span>':'')+'</div><b>'+esc(c.q)+'</b><div class="sub">'+esc(c.a)+'</div></div><div class="row" style="gap:6px"><button class="btn ghost sm" data-act="fcedit" data-k="'+c.id+'">'+tr('Edit','تعديل')+'</button><button class="btn danger sm" data-act="fcdel" data-k="'+c.id+'">'+tr('Delete','حذف')+'</button></div></div></div>';}).join('');
+}
+function fcMineView(p){
+  if(p[1]==='form')return fcForm(p[2]);
+  const l=fcMine(),st=fcStats(l),td=fcToday(),subs=fcSubList();
+  main('<div class="fade"><h1>'+tr('My Flashcards','كروتي الخاصة')+'</h1>'+fcTabs('mine')+fcSyncBanner()
+  +'<div class="grid g4 mt2"><div class="li"><div class="t"><b>'+st.n+'</b><span>'+tr('Total cards','إجمالي الكروت')+'</span></div></div><div class="li"><div class="t"><b>'+st.due+'</b><span>'+tr('Due','مستحق')+'</span></div></div><div class="li"><div class="t"><b>'+(td.n||0)+'</b><span>'+tr('Reviewed today','اتراجع اليوم')+'</span></div></div><div class="li"><div class="t"><b>'+st.ms+'</b><span>'+tr('Mastered','متقن')+'</span></div></div></div><div class="sub mt">🔥 '+tr('Streak','سلسلة الأيام')+': '+fcStreak()+' · '+tr('Mastered = 3+ reviews and interval ≥ 21 days','متقن = 3 مراجعات أو أكتر وفاصل ٢١ يوم أو أكتر')+'</div>'
+  +'<div class="row wrap mt2" style="gap:8px"><button class="btn" data-go="flash" data-arg="mine|form">+ '+tr('New card','كارت جديد')+'</button><button class="btn ghost" data-act="fcmgo" data-m="smart">'+tr('Smart review','مراجعة ذكية')+'</button><button class="btn ghost" data-act="fcmgo" data-m="normal">'+tr('Normal review','مراجعة عادية')+'</button></div>'
+  +'<div class="grid g3 mt2"><input type="text" id="fqs" placeholder="'+tr('Search question or answer…','ابحث في السؤال أو الإجابة…')+'" value="'+esc(FQ.q)+'"><select id="fqsub"><option value="">'+tr('All subjects','كل المواد')+'</option>'+subs.map(s=>'<option value="'+s+'"'+(FQ.sub===s?' selected':'')+'>'+esc(fcSub(s))+'</option>').join('')+'</select><select id="fqst"><option value="">'+tr('All statuses','كل الحالات')+'</option><option value="new"'+(FQ.st==='new'?' selected':'')+'>'+tr('New','جديد')+'</option><option value="due"'+(FQ.st==='due'?' selected':'')+'>'+tr('Due','مستحق')+'</option><option value="done"'+(FQ.st==='done'?' selected':'')+'>'+tr('Reviewed','سبق مراجعته')+'</option></select></div>'
+  +'<div id="fclist">'+fcListHtml()+'</div></div>');
+  const rl=()=>{const e=$('#fclist');if(e)e.innerHTML=fcListHtml();};
+  $('#fqs').oninput=e=>{FQ.q=e.target.value;rl();};$('#fqsub').onchange=e=>{FQ.sub=e.target.value;rl();};$('#fqst').onchange=e=>{FQ.st=e.target.value;rl();};
+  fcAfterPull('mine');
+}
+ACT.fcmgo=el=>{const l=fcFilter();main('<div class="fade"><div id="fcbox"></div></div>');fcStart(l,el.dataset.m,false,'mine');};
+function fcForm(id){
+  const c=id&&FCS.cards[id]?FCS.cards[id]:null,subs=fcSubList();
+  main('<div class="fade"><h1>'+(c?tr('Edit card','تعديل الكارت'):tr('New card','كارت جديد'))+'</h1><div class="mt2">'+fcBack('mine')+'</div><div class="card mt2"><label class="sub">'+tr('Front — question','الوجه الأمامي — السؤال')+'</label><textarea id="fcq" maxlength="1000">'+esc(c?c.q:'')+'</textarea><label class="sub mt">'+tr('Back — answer','الوجه الخلفي — الإجابة')+'</label><textarea id="fca2" maxlength="2000">'+esc(c?c.a:'')+'</textarea><label class="sub mt">'+tr('Subject','المادة')+'</label><select id="fcs">'+subs.map(s=>'<option value="'+s+'"'+((c?c.sub:S.sub)===s?' selected':'')+'>'+esc(fcSub(s))+'</option>').join('')+'</select><label class="sub mt">'+tr('Chapter / topic (optional)','الفصل أو الموضوع (اختياري)')+'</label><input type="text" id="fct" maxlength="80" value="'+esc(c?c.tp||'':'')+'"><div id="fcerr" class="sub mt" style="color:var(--bad)"></div><button class="btn block mt2" data-act="fcsave" data-k="'+(c?id:'')+'">'+tr('Save','حفظ')+'</button></div></div>');
+}
+ACT.fcsave=el=>{
+  fcLoad();const q=$('#fcq').value.trim(),a=$('#fca2').value.trim(),s=$('#fcs').value,t=$('#fct').value.trim(),err=$('#fcerr'),id=el.dataset.k;
+  if(!q||!a){err.textContent=tr('Question and answer cannot be empty.','السؤال والإجابة لازم يتكتبوا.');return;}
+  if(!s||!SUBJECTS[s]||SUBJECTS[s].yr!==curYear()){err.textContent=tr('Choose a subject.','اختار المادة.');return;}
+  el.disabled=true;const now=Date.now();
+  if(id&&FCS.cards[id]){const o=FCS.cards[id];if(o.q!==q&&FCS.prog.m[id]){delete FCS.prog.m[id];FCS.dirty['prog/m/'+id]=1;}Object.assign(o,{q:q,a:a,sub:s,tp:t,upd:now});o._s=0;FCS.dirty['cards/'+id]=1;}
+  else{const nid='c'+now.toString(36)+Math.random().toString(36).slice(2,6);FCS.cards[nid]={q:q,a:a,sub:s,tp:t,cr:now,upd:now,_s:0};FCS.dirty['cards/'+nid]=1;}
+  fcSave();fcPushSoon();toast(tr('Saved ✓','تم الحفظ ✓'),1800);go('flash','mine');
+};
+ACT.fcedit=el=>go('flash','mine|form|'+el.dataset.k);
+ACT.fcdel=el=>{const id=el.dataset.k;if(!confirm(tr('Delete this card?','تحذف الكارت ده؟')))return;fcLoad();delete FCS.cards[id];FCS.dirty['cards/'+id]=1;if(FCS.prog.m[id]){delete FCS.prog.m[id];FCS.dirty['prog/m/'+id]=1;}fcSave();fcPushSoon();const e=$('#fclist');if(e)e.innerHTML=fcListHtml();toast(tr('Deleted','تم الحذف'),1500);};
+window.__FC={fcSchedule:fcSchedule,fcLoad:fcLoad,fcReady:fcReady,go:go,fcMastered:fcMastered};
 
 VIEWS.progress=function(){
   const days=[];for(let k=6;k>=0;k--){const d=new Date(Date.now()-k*864e5);const x=S.days[dkey(d)]||{p:0,a:0,s:0};days.push({l:d.toLocaleDateString('en',{weekday:'short'}),a:x.a,p:x.p});}
