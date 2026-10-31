@@ -3,6 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+<script>window.OneSignalDeferred=window.OneSignalDeferred||[];OneSignalDeferred.push(async function(OneSignal){await OneSignal.init({appId:"68ba20f5-20c1-4763-8470-60410ee992aa"});});</script>
 <meta name="theme-color" content="#070b16">
 <link rel="manifest" href="manifest.webmanifest"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@400;500;600;700;800&family=Noto+Sans:wght@400;500;600;700;800&display=swap">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -599,6 +601,14 @@ body,button,input,textarea,select{font-family:var(--font)}
 @keyframes imSpin{to{transform:rotate(360deg)}}
 @keyframes imBreath{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
 @media (prefers-reduced-motion:reduce){.im-orb,.im-orb *{animation:none!important;transition:none!important}}
+
+/* ===== v52: download app button ===== */
+.dl-app{display:inline-flex;align-items:center;gap:7px;height:38px;padding:0 16px;border-radius:999px;background:linear-gradient(135deg,#2f6bff,#0ea5e9);color:#fff;font-weight:800;font-size:13.5px;text-decoration:none;white-space:nowrap;box-shadow:0 6px 18px rgba(47,107,255,.35);flex:none}
+.dl-app[hidden]{display:none}
+.dl-app svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.dl-app:hover{filter:brightness(1.08)}
+.dl-short{display:none}
+@media (max-width:560px){.dl-long{display:none}.dl-short{display:inline}.dl-app{padding:0 12px}}
 </style>
 </head>
 <body>
@@ -2132,10 +2142,11 @@ function applyTheme(){document.documentElement.dataset.theme=S.theme==='light'?'
 function isMobile(){return window.matchMedia&&matchMedia('(max-width:860px)').matches;}
 function shell(){
   applyLang();
-  $('#root').innerHTML='<div class="app'+(S.sbc?' sbc':'')+'" id="app"><aside class="sidebar"><div class="brand">'+brandHTML('blogo')+'</div><nav class="nav" id="nav">'+navItems().map(n=>'<button data-go="'+n[0]+'" data-nav="'+n[0]+'" title="'+esc(tr(n[1],n[2]))+'">'+ic(n[3])+'<span>'+esc(tr(n[1],n[2]))+'</span></button>').join('')+'</nav></aside><div class="scrim" id="scrim"></div><div class="content"><header class="topbar"><button class="icon-btn burger" id="bg" aria-label="menu">'+ic('menu')+'</button>'+brandHTML('toplogo')+'<b id="ptitle" style="font-size:16px"></b><span class="sp"></span><button class="icon-btn langbtn" id="lg" data-act="lang" aria-label="language" title="'+esc(tr('العربية','English'))+'">'+(L()==='ar'?'EN':'ع')+'</button><button class="icon-btn" id="bell" aria-label="notifications"></button><div class="uwrap"><button class="avbtn" id="tav" aria-label="account" aria-haspopup="true"></button><div class="umenu" id="umenu" hidden><button data-go="profile">'+ic('user','sm')+'<span>'+esc(tr('Profile','الملف الشخصي'))+'</span></button><button data-go="settings">'+ic('gear','sm')+'<span>'+esc(tr('Settings','الإعدادات'))+'</span></button></div></div></header><main id="main"></main></div><nav class="bnav" id="bnav">'+[['study','Study','المذاكرة','book'],['subjects','Subjects','المواد','layers'],['dashboard','Home','الرئيسية','grid'],['arena','Arena','الأصدقاء','users']].map(n=>'<button data-go="'+n[0]+'" data-nav="'+n[0]+'"><i>'+ic(n[3])+'</i><span>'+esc(tr(n[1],n[2]))+'</span></button>').join('')+'<button id="bmore"><i>'+ic('menu')+'</i><span>'+esc(tr('More','المزيد'))+'</span></button></nav></div>';
+  $('#root').innerHTML='<div class="app'+(S.sbc?' sbc':'')+'" id="app"><aside class="sidebar"><div class="brand">'+brandHTML('blogo')+'</div><nav class="nav" id="nav">'+navItems().map(n=>'<button data-go="'+n[0]+'" data-nav="'+n[0]+'" title="'+esc(tr(n[1],n[2]))+'">'+ic(n[3])+'<span>'+esc(tr(n[1],n[2]))+'</span></button>').join('')+'</nav></aside><div class="scrim" id="scrim"></div><div class="content"><header class="topbar"><button class="icon-btn burger" id="bg" aria-label="menu">'+ic('menu')+'</button>'+brandHTML('toplogo')+'<b id="ptitle" style="font-size:16px"></b><span class="sp"></span><a class="dl-app" id="dlApp" href="rafiq.apk?v=52" download hidden aria-label="تحميل التطبيق"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0l-4.5-4.5M12 15l4.5-4.5M4 19h16"/></svg><span class="dl-long">تحميل التطبيق</span><span class="dl-short">تحميل</span></a><button class="icon-btn langbtn" id="lg" data-act="lang" aria-label="language" title="'+esc(tr('العربية','English'))+'">'+(L()==='ar'?'EN':'ع')+'</button><button class="icon-btn" id="bell" aria-label="notifications"></button><div class="uwrap"><button class="avbtn" id="tav" aria-label="account" aria-haspopup="true"></button><div class="umenu" id="umenu" hidden><button data-go="profile">'+ic('user','sm')+'<span>'+esc(tr('Profile','الملف الشخصي'))+'</span></button><button data-go="settings">'+ic('gear','sm')+'<span>'+esc(tr('Settings','الإعدادات'))+'</span></button></div></div></header><main id="main"></main></div><nav class="bnav" id="bnav">'+[['study','Study','المذاكرة','book'],['subjects','Subjects','المواد','layers'],['dashboard','Home','الرئيسية','grid'],['arena','Arena','الأصدقاء','users']].map(n=>'<button data-go="'+n[0]+'" data-nav="'+n[0]+'"><i>'+ic(n[3])+'</i><span>'+esc(tr(n[1],n[2]))+'</span></button>').join('')+'<button id="bmore"><i>'+ic('menu')+'</i><span>'+esc(tr('More','المزيد'))+'</span></button></nav></div>';
   $('#bg').onclick=()=>{if(isMobile())$('#app').classList.toggle('open');else{$('#app').classList.toggle('sbc');S.sbc=$('#app').classList.contains('sbc');save();}};
   $('#scrim').onclick=()=>$('#app').classList.remove('open');$('#bmore').onclick=()=>$('#app').classList.toggle('open');
   $('#bell').onclick=openNotes;
+  {const dl=$('#dlApp');if(dl){const inApp=matchMedia('(display-mode: standalone)').matches||matchMedia('(display-mode: fullscreen)').matches||(document.referrer||'').indexOf('android-app://')===0;dl.hidden=inApp;}}
   $('#tav').onclick=e=>{e.stopPropagation();const m=$('#umenu');m.hidden=!m.hidden;};
   applyTheme();hdr();paintBell();paintDb();
 }
@@ -2475,6 +2486,15 @@ VIEWS.interp=function(){
   imWire();imState();
 };
 
+/* ===== v53: OneSignal web push ===== */
+function osSync(){
+  window.OneSignalDeferred=window.OneSignalDeferred||[];
+  OneSignalDeferred.push(async function(OS){try{
+    if(S.uid&&OS.login)await OS.login(String(S.uid));
+    if(S.year&&OS.User&&OS.User.addTag)OS.User.addTag('year',String(S.year));
+  }catch(e){}});
+}
+
 function go(v,a){stopMic();
   if(guard())return;ARENA_CREATE=false;
   stopTick();LEAVE.forEach(f=>{try{f();}catch(e){}});LEAVE.length=0;G=null;
@@ -2484,6 +2504,16 @@ function go(v,a){stopMic();
   hdr();(VIEWS[v]||VIEWS.dashboard)(a);
 }
 const ACT={};
+ACT.pushOn=function(){
+  window.OneSignalDeferred=window.OneSignalDeferred||[];
+  OneSignalDeferred.push(async function(OS){try{
+    if(OS.Notifications&&OS.Notifications.requestPermission)await OS.Notifications.requestPermission();
+    else await OS.Slidedown.promptPush();
+    osSync();
+    toast(tr('Notifications are on. · الإشعارات اتفعلت','الإشعارات اتفعلت'),3000);
+  }catch(e){toast(tr('Notifications are not available right now.','الإشعارات مش متاحة دلوقتي.'),4000);}});
+};
+
 /* ================= تسجيل الدخول بـ Google + Onboarding ================= */
 const FBCFG={apiKey:'AIzaSyBc86nkjNXZuACMlw3UcpZdCOFdJUdt6Oo',authDomain:'qabank-6f97a.firebaseapp.com',projectId:'qabank-6f97a'};
 const YEARS=[{k:'y1',en:'1st Secondary',ar:'الصف الأول الثانوي'},{k:'y2',en:'2nd Secondary',ar:'الصف الثاني الثانوي'},{k:'y3',en:'3rd Secondary',ar:'الصف الثالث الثانوي'},{k:'y4',en:'Institute – Year 1',ar:'الصف الأول معهد'},{k:'y5',en:'Institute – Year 2',ar:'الصف الثاني معهد'}];
@@ -2615,7 +2645,7 @@ ACT.reauthlater=function(){try{localStorage.setItem('rhqb_na',String(Date.now())
 function yearModal(){
   modal('<div class="auth-panel gate-page"><div class="auth-logo">'+brandHTML()+'</div><div class="auth-brand-sub" style="text-align:center;margin:-8px 0 16px">Onboarding</div><h2 class="auth-title">Which academic year are you in? 🎓</h2><p class="auth-description"><span class="ar">اختار سنتك الدراسية.</span></p><div class="yeargrid">'+YEARS.map(y=>'<button data-act="year" data-k="'+y.k+'">'+y.en+'<small class="ar">'+y.ar+'</small></button>').join('')+'</div></div>');
 }
-ACT.year=function(el){if(S.year&&yearLocked())return;setYear(el.dataset.k);{const ss=subjectsFor();if(ss.length&&!ss.includes(S.sub)){S.sub=ss[0];S.ch=+subChapters(S.sub)[0];}}modal('');cfg.topics=new Set(chTopics());RCFG.topics=new Set(chTopics());saveCfg();toast('Saved. Welcome! · تم الحفظ، أهلاً بيك');go(cur.v,cur.a);};
+ACT.year=function(el){if(S.year&&yearLocked())return;setYear(el.dataset.k);osSync();{const ss=subjectsFor();if(ss.length&&!ss.includes(S.sub)){S.sub=ss[0];S.ch=+subChapters(S.sub)[0];}}modal('');cfg.topics=new Set(chTopics());RCFG.topics=new Set(chTopics());saveCfg();toast('Saved. Welcome! · تم الحفظ، أهلاً بيك');go(cur.v,cur.a);};
 ACT.yearchg=function(){if(!yearLocked())yearModal();};
 
 document.addEventListener('change',e=>{
@@ -3547,7 +3577,7 @@ VIEWS.settings=function(){
   row(tr('Arabic translation in questions','الترجمة العربية في الأسئلة'),tr('Show the Arabic translation under each question and answer','اعرض الترجمة العربية تحت كل سؤال وإجابة'),'ar',S.ar)+
   row(tr('Du\'a reminders','تذكير بالدعاء'),tr('A short reminder every 5 answered questions','تذكير قصير كل ٥ أسئلة بتحلها'),'du',S.duas)+'</div>'+
   '<div class="card"><h3>'+tr('Cloud sync','المزامنة السحابية')+'</h3><div class="note">'+tr('Your account, points and progress sync automatically across your devices when you sign in with Google.','حسابك ونقاطك وتقدمك بيتزامنوا تلقائيًا بين أجهزتك لما تسجّل دخولك بجوجل.')+'</div><div class="li mt"><div class="t"><b>'+tr('Shared sync','المزامنة')+'</b><span>'+tr('Automatic connection','اتصال تلقائي')+'</span></div><span class="badge ok">'+tr('Enabled','مفعّلة')+'</span></div></div></div>'+
-  '<div class="card mt2"><h3>'+tr('Danger zone','منطقة الخطر')+'</h3><div class="row mt wrap"><button class="btn danger" data-act="reset">'+tr('Reset all progress','مسح كل التقدم')+'</button></div></div></div>');
+  '<div class="card mt2"><h3>'+tr('Notifications','الإشعارات')+'</h3><div class="note">'+tr('Get updates and reminders from RAFIQ on this device.','استقبل التحديثات والتذكيرات من رفيق على الجهاز ده.')+'</div><div class="row mt wrap"><button class="btn" data-act="pushOn">'+tr('Enable notifications','فعّل الإشعارات')+'</button></div></div>'+'<div class="card mt2"><h3>'+tr('Danger zone','منطقة الخطر')+'</h3><div class="row mt wrap"><button class="btn danger" data-act="reset">'+tr('Reset all progress','مسح كل التقدم')+'</button></div></div></div>');
 };
 ACT.setlang=el=>{if(el.dataset.k===L())return;ACT.lang();};
 
@@ -3830,6 +3860,7 @@ function boot(){
   if(S.name&&S.accountKey){identityReady=false;syncIdentity().then(async()=>{await syncNow();const lost=applyLeavePenalty(BOOT_MARK);BOOT_MARK=null;if(lost)toast('<div>You left a session unfinished and lost '+lost+' points. · سبت جلسة من غير ما تكملها وخسرت '+lost+' نقطة</div>',7000);try{loadMyImages();pushProfile();}catch(e){}});}
   else{const lost=applyLeavePenalty(BOOT_MARK);BOOT_MARK=null;if(lost)toast('<div>You left a session unfinished and lost '+lost+' points. · سبت جلسة من غير ما تكملها وخسرت '+lost+' نقطة</div>',7000);}
   if(S.accountKey)syncSoon();
+  osSync();
   if(S.accountKey&&!YEARS.some(y=>y.k===S.year)){setYear('y5');}
   if(S.accountKey)authReady().then(()=>{if(AUTHDEF&&!(FBA&&FBA.currentUser))noteNoAuth();});
   if(!S.accountKey){
@@ -4099,7 +4130,7 @@ new MutationObserver(f).observe(document.body,{childList:true,subtree:true});f()
 
 /* ===== PWA: install prompt + service worker ===== */
 (function(){
-  try{if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol))window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));}catch(e){}
+  try{if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol))window.addEventListener('load',()=>navigator.serviceWorker.register('OneSignalSDKWorker.js').catch(()=>{}));}catch(e){}
   let dp=null;const bar=document.createElement('div');bar.className='pwa-i';
   bar.innerHTML='<b>ثبّت رفيق على جهازك 📲</b><button type="button" id="pwaGo">تثبيت</button><button type="button" class="x" id="pwaNo" aria-label="إغلاق">✕</button>';
   document.body.appendChild(bar);
