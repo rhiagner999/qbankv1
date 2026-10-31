@@ -609,6 +609,34 @@ body,button,input,textarea,select{font-family:var(--font)}
 .dl-app:hover{filter:brightness(1.08)}
 .dl-short{display:none}
 @media (max-width:560px){.dl-long{display:none}.dl-short{display:inline}.dl-app{padding:0 12px}}
+
+/* ===== v54: full-screen voice mode ===== */
+.im-full{position:fixed;inset:0;z-index:400;background:#05070d;color:#fff;display:flex;flex-direction:column;animation:imIn .25s ease both}
+@keyframes imIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+.imf-top{display:flex;justify-content:space-between;align-items:center;padding:calc(env(safe-area-inset-top,0px) + 14px) 16px 8px}
+.imf-btn{width:54px;height:54px;border-radius:50%;border:0;background:rgba(255,255,255,.12);color:#fff;display:grid;place-items:center;cursor:pointer;flex:none}
+.imf-btn svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.imf-btn.off{opacity:.45}
+.imf-x{background:#fff;color:#05070d}
+.imf-center{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:0 22px}
+.im-full .im-orb{width:250px;height:250px}
+.im-full .im-status{color:#cbd5e1;font-size:15px}
+.im-full .im-status[data-st=listening]{color:#2dd4bf}
+.im-full .im-status[data-st=translating]{color:#8fb4ff}
+.im-full .im-status[data-st=speaking]{color:#38bdf8}
+.im-full .im-status[data-st=error]{color:#f87171}
+.imf-last{max-width:560px;min-height:56px;text-align:center;font-size:18px;line-height:1.7;color:#e2e8f0;padding:0 6px;word-break:break-word}
+.imf-last small{display:block;color:#94a3b8;font-size:13px;margin-top:4px}
+.imf-bar{display:flex;align-items:center;gap:10px;padding:10px 14px calc(env(safe-area-inset-bottom,0px) + 16px)}
+.imf-bar input{flex:1;min-width:0;height:54px;border-radius:999px;border:1px solid rgba(255,255,255,.14);background:#14171f;color:#fff;padding:0 20px;font:inherit}
+.imf-bar input::placeholder{color:#94a3b8}
+@media (prefers-reduced-motion:reduce){.im-full{animation:none}}
+
+/* ring placement fix (explicit box so no other .ring rule can shift them) */
+.im-orb .ring{left:0;top:0;width:100%;height:100%;right:auto;bottom:auto;display:block;box-sizing:border-box}
+.im-orb .r2{left:-20px;top:-20px;width:calc(100% + 40px);height:calc(100% + 40px);inset:auto}
+.im-orb .r3{left:-30px;top:-30px;width:calc(100% + 60px);height:calc(100% + 60px);inset:auto}
+.im-orb .arc,.im-orb .core{box-sizing:border-box}
 </style>
 </head>
 <body>
@@ -2320,6 +2348,7 @@ function imRender(){
   if(IM.interim)h+='<div class="im-item"><div class="im-src im-interim" dir="'+imDir(IM.src)+'">'+esc(IM.interim)+'</div></div>';
   out.innerHTML=h;
   out.scrollTop=out.scrollHeight;
+  imShowLast();
 }
 IM.lvl=0;IM.pending=0;IM.speaking=false;IM.err='';IM.raf=0;IM.tts=IM.tts!==false;
 function imStatusText(st){
@@ -2331,33 +2360,46 @@ function imStatusText(st){
 }
 function imState(){
   const st=IM.err?'error':IM.pending>0?'translating':IM.speaking?'speaking':IM.on?'listening':'idle';
-  const el=$('#imOrb');if(el)el.className='im-orb '+st;
-  const s2=$('#imStatus');if(s2){s2.textContent=imStatusText(st);s2.dataset.st=st;}
+  document.querySelectorAll('.imo').forEach(el=>{el.className='im-orb imo '+st;});
+  document.querySelectorAll('#imStatus,.imst').forEach(el=>{el.textContent=imStatusText(st);el.dataset.st=st;});
   imKick();
 }
 function imBump(v){IM.lvl=Math.max(IM.lvl,v);imKick();}
 function imKick(){
   if(IM.raf)return;
   const step=()=>{
-    const el=$('#imOrb');
-    if(!el){IM.raf=0;return;}
+    const els=document.querySelectorAll('.imo');
+    if(!els.length){IM.raf=0;return;}
     if(IM.speaking)IM.lvl=0.45+0.4*Math.abs(Math.sin(performance.now()/180));
     else IM.lvl*=0.9;
-    if(!IM.speaking&&IM.lvl<0.01&&!IM.on){IM.lvl=0;el.style.setProperty('--lvl','0');IM.raf=0;return;}
-    el.style.setProperty('--lvl',IM.lvl.toFixed(3));
+    if(!IM.speaking&&IM.lvl<0.01&&!IM.on){IM.lvl=0;els.forEach(e=>e.style.setProperty('--lvl','0'));IM.raf=0;return;}
+    els.forEach(e=>e.style.setProperty('--lvl',IM.lvl.toFixed(3)));
     IM.raf=requestAnimationFrame(step);
   };
   IM.raf=requestAnimationFrame(step);
 }
+function imVoice(lang){
+  try{
+    const re=lang==='ar-EG'?/^ar/i:/^en/i, good=/natural|neural|google|wavenet|online|microsoft/i;
+    const c=(speechSynthesis.getVoices()||[]).filter(v=>re.test(v.lang));
+    const sc=v=>(good.test(v.name)?2:0)+(v.localService?0:1);
+    c.sort((x,y)=>sc(y)-sc(x));
+    return c[0]||null;
+  }catch(e){return null;}
+}
 function imSpeak(text,to){
   if(!IM.tts||!text||!window.speechSynthesis||!window.SpeechSynthesisUtterance)return;
   try{
-    const u=new SpeechSynthesisUtterance(text);
-    u.lang=to==='ar-EG'?'ar-EG':'en-US';u.rate=0.95;
-    const done=()=>{IM.speaking=false;imState();};
-    u.onstart=()=>{IM.speaking=true;imState();};
-    u.onend=done;u.onerror=done;
-    speechSynthesis.cancel();speechSynthesis.speak(u);
+    speechSynthesis.cancel();
+    const lang=to==='ar-EG'?'ar-EG':'en-US', voice=imVoice(lang);
+    const parts=text.split(/(?<=[.!?؟،,;])\s+/).map(x=>x.trim()).filter(Boolean);
+    parts.forEach((part,idx)=>{
+      const u=new SpeechSynthesisUtterance(part);
+      u.lang=lang;if(voice)u.voice=voice;u.rate=0.92;u.pitch=1;
+      if(idx===0)u.onstart=()=>{IM.speaking=true;imState();};
+      if(idx===parts.length-1){const done=()=>{IM.speaking=false;imState();};u.onend=done;u.onerror=done;}
+      speechSynthesis.speak(u);
+    });
   }catch(e){}
 }
 function imRun(e){
@@ -2380,6 +2422,7 @@ function imStop(){
   try{if(window.speechSynthesis)speechSynthesis.cancel();}catch(x){}
   IM.speaking=false;
   const b=$('#imMic');if(b){b.classList.remove('on');const sp=b.querySelector('span');if(sp)sp.textContent=tr('Start speaking','ابدأ الكلام');}
+  const fm=$('#imfMic');if(fm)fm.classList.toggle('off',!IM.on);
   imRender();imState();
 }
 function imStart(){
@@ -2396,8 +2439,9 @@ function imStart(){
       const res=ev.results[i];
       if(res.isFinal){
         let best=res[0];for(let k=1;k<res.length;k++)if((res[k].confidence||0)>(best.confidence||0))best=res[k];
-        const t=best.transcript.trim();
-        if(t)imAdd(t,best.confidence||0);
+        const t=best.transcript.trim(), cf=best.confidence||0;
+        if(t&&cf>0&&cf<0.4){IM.err=tr('I did not catch that well. Say it again.','مسمعتش كويس، قول الكلمة تاني.');imState();continue;}
+        if(t)imAdd(t,cf);
       }else interim+=res[0].transcript;
     }
     IM.interim=interim.trim();imBump(0.9);imRender();imState();
@@ -2424,7 +2468,49 @@ function imStart(){
   IM.rec=r;IM.on=true;
   try{r.start();}catch(x){IM.on=false;IM.rec=null;IM.err=tr('Could not start the microphone. Tap it again.','متقدرش أشغّل الميكروفون. اضغط عليه تاني.');imState();return;}
   const b=$('#imMic');if(b){b.classList.add('on');const sp=b.querySelector('span');if(sp)sp.textContent=tr('Stop','إيقاف');}
-  imRender();imState();
+  imOpenFull();imRender();imState();
+}
+
+const IMF_ICON={
+  down:'<svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>',
+  spk:'<svg viewBox="0 0 24 24"><path d="M11 5L6 9H3v6h3l5 4V5z"/><path d="M15.5 8.5a5 5 0 010 7M18.5 5.5a9 9 0 010 13"/></svg>',
+  mic:'<svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/></svg>',
+  x:'<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>'
+};
+function imShowLast(){
+  const fl=$('#imfLast');if(!fl)return;
+  if(IM.interim){fl.innerHTML=esc(IM.interim);return;}
+  const last=IM.log[IM.log.length-1];
+  if(!last){fl.innerHTML=esc(tr('Say something…','قول أي حاجة…'));return;}
+  if(last.tr===null){fl.innerHTML=esc(last.src)+'<small>…</small>';return;}
+  if(last.tr===false){fl.innerHTML=esc(last.src)+'<small>⚠ '+esc(tr('Translation unavailable right now','الترجمة مش متاحة دلوقتي'))+'</small>';return;}
+  fl.innerHTML=esc(last.tr.text)+'<small>'+esc(last.src)+'</small>';
+}
+function imOpenFull(){
+  if($('#imFull'))return;
+  const f=document.createElement('div');
+  f.className='im-full';f.id='imFull';f.setAttribute('role','dialog');f.setAttribute('aria-label',tr('Voice translator','المترجم الصوتي'));
+  f.innerHTML='<div class="imf-top"><button class="imf-btn" id="imfClose" type="button" aria-label="'+esc(tr('Close','إغلاق'))+'">'+IMF_ICON.down+'</button>'
+    +'<button class="imf-btn'+(IM.tts?'':' off')+'" id="imfTts" type="button" aria-label="'+esc(tr('Read aloud','اقرأ الترجمة'))+'">'+IMF_ICON.spk+'</button></div>'
+    +'<div class="imf-center"><div class="im-orb idle imo" aria-hidden="true"><span class="ring r3"></span><span class="ring r2"></span><span class="ring r1"></span><span class="arc"></span><span class="core"></span></div>'
+    +'<div class="im-status imst" role="status" aria-live="polite"></div><div class="imf-last" id="imfLast"></div></div>'
+    +'<div class="imf-bar"><input id="imfWord" dir="auto" placeholder="'+esc(tr('Type a word to translate…','اكتب كلمة عشان تترجمها…'))+'">'
+    +'<button class="imf-btn'+(IM.on?'':' off')+'" id="imfMic" type="button" aria-label="mic">'+IMF_ICON.mic+'</button>'
+    +'<button class="imf-btn imf-x" id="imfX" type="button" aria-label="'+esc(tr('Exit','خروج'))+'">'+IMF_ICON.x+'</button></div>';
+  document.body.appendChild(f);
+  $('#imfClose').onclick=imCloseFull;
+  $('#imfX').onclick=imCloseFull;
+  $('#imfMic').onclick=()=>{IM.on?imStop():imStart();};
+  $('#imfTts').onclick=()=>{
+    IM.tts=!IM.tts;if(!IM.tts){try{speechSynthesis.cancel();}catch(x){}IM.speaking=false;}
+    $('#imfTts').classList.toggle('off',!IM.tts);const ct=$('#imTts');if(ct)ct.classList.toggle('on',IM.tts);imState();
+  };
+  $('#imfWord').onkeydown=e=>{if(e.key==='Enter'){const v=e.target.value;imLook(v).then(()=>{const wo=$('#imWordOut'),fl=$('#imfLast');if(wo&&fl)fl.innerHTML=wo.innerHTML;});}};
+  imShowLast();imState();
+}
+function imCloseFull(){
+  imStop();
+  const f=$('#imFull');if(f)f.remove();
 }
 async function imLook(text){
   const w=text.replace(/[^\p{L}\p{N}'\-]/gu,'');
@@ -2474,7 +2560,7 @@ VIEWS.interp=function(){
    +'<div class="seg" role="group">'
    +'<button type="button" data-imsrc="en-US" class="'+(en?'on':'')+'">English → العربي</button>'
    +'<button type="button" data-imsrc="ar-EG" class="'+(en?'':'on')+'">العربي → English</button></div>'
-   +'<div class="im-stage"><div class="im-orb idle" id="imOrb" aria-hidden="true"><span class="ring r3"></span><span class="ring r2"></span><span class="ring r1"></span><span class="arc"></span><span class="core"></span></div></div>'
+   +'<div class="im-stage"><div class="im-orb idle imo" id="imOrb" aria-hidden="true"><span class="ring r3"></span><span class="ring r2"></span><span class="ring r1"></span><span class="arc"></span><span class="core"></span></div></div>'
    +'<div class="im-status" id="imStatus" role="status" aria-live="polite"></div>'
    +'<div class="im-row"><button class="im-mic'+(IM.on?' on':'')+'" id="imMic" type="button">'+ic('voice')+'<span>'+(IM.on?tr('Stop','إيقاف'):tr('Start speaking','ابدأ الكلام'))+'</span></button>'
    +'<button class="im-tts'+(IM.tts?' on':'')+'" id="imTts" type="button" aria-pressed="'+String(IM.tts)+'">🔊 <span>'+tr('Read aloud','اقرأ الترجمة')+'</span></button></div>'
