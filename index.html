@@ -567,6 +567,38 @@ body,button,input,textarea,select{font-family:var(--font)}
 .av video.avi{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:50%}
 .pf-cv-vid{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none}
 .pf-cam-m{inset-inline-end:auto;inset-inline-start:-2px;background:#7c3aed}
+/* ===== v49: responsive fixes ===== */
+.chbar select{min-width:0;max-width:100%;text-overflow:ellipsis}
+@media(max-width:900px){.chbar{flex-wrap:wrap}.chbar select{flex:1 1 100%;width:100%}.chbar label{flex:0 0 auto}}
+
+/* ===== v51: voice translator orb (RAFIQ) ===== */
+.im-page .im-card{text-align:center}
+.im-page .im-out,.im-page .im-look,.im-page .im-wo,.im-page .small{text-align:start}
+.im-stage{display:grid;place-items:center;height:250px;margin:6px 0 0}
+.im-orb{--lvl:0;position:relative;width:170px;height:170px;display:grid;place-items:center}
+.im-orb .ring{position:absolute;inset:0;border-radius:50%;border:2px solid rgba(45,212,191,.55);transform:scale(calc(1 + .45 * var(--lvl)));opacity:calc(.2 + .7 * var(--lvl));transition:transform .08s linear,opacity .08s linear}
+.im-orb .r2{inset:-20px;border-color:rgba(47,107,255,.5);transform:scale(calc(1 + .6 * var(--lvl)))}
+.im-orb .r3{inset:-44px;border-color:rgba(14,165,233,.28);transform:scale(calc(1 + .8 * var(--lvl)))}
+.im-orb .core{position:absolute;inset:16%;border-radius:50%;background:radial-gradient(circle at 34% 28%,#c4d6ff 0,#2f6bff 46%,#0b3fb8 100%);box-shadow:0 0 calc(22px + 70px * var(--lvl)) rgba(47,107,255,.6);transform:scale(calc(1 + .22 * var(--lvl)));transition:transform .08s linear,box-shadow .08s linear}
+.im-orb .arc{position:absolute;inset:-8px;border-radius:50%;background:conic-gradient(from 0deg,transparent 0 60%,#2dd4bf 76%,#2f6bff 86%,transparent 92%);-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 5px),#000 calc(100% - 4px));mask:radial-gradient(farthest-side,transparent calc(100% - 5px),#000 calc(100% - 4px));opacity:0}
+.im-orb.idle .core{animation:imBreath 3.4s ease-in-out infinite}
+.im-orb.translating .arc{opacity:1;animation:imSpin 1.1s linear infinite}
+.im-orb.translating .core{background:radial-gradient(circle at 34% 28%,#c8f5ec 0,#2dd4bf 40%,#0b6e7a 100%);box-shadow:0 0 40px rgba(45,212,191,.5)}
+.im-orb.speaking .core{background:radial-gradient(circle at 34% 28%,#c4d6ff 0,#0ea5e9 46%,#0b3fb8 100%)}
+.im-orb.error .core{background:radial-gradient(circle at 34% 28%,#fecaca 0,#ef4444 50%,#7f1d1d 100%);box-shadow:none}
+.im-orb.error .ring{border-color:rgba(239,68,68,.5)}
+.im-status{text-align:center;font-weight:700;min-height:28px;margin-top:4px;padding:0 8px;color:var(--muted);line-height:1.6}
+.im-status[data-st=listening]{color:#2dd4bf}
+.im-status[data-st=translating]{color:#8fb4ff}
+.im-status[data-st=speaking]{color:#38bdf8}
+.im-status[data-st=error]{color:#f87171}
+.im-page .im-row{display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:10px;margin:14px 0}
+.im-page .im-mic{padding:14px 26px}
+.im-tts{display:inline-flex;align-items:center;gap:6px;padding:12px 16px;border-radius:999px;border:1px solid rgba(127,127,127,.4);background:transparent;color:inherit;font:inherit;font-weight:700;cursor:pointer}
+.im-tts.on{background:rgba(47,107,255,.16);border-color:rgba(47,107,255,.55)}
+@keyframes imSpin{to{transform:rotate(360deg)}}
+@keyframes imBreath{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+@media (prefers-reduced-motion:reduce){.im-orb,.im-orb *{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
@@ -2278,10 +2310,52 @@ function imRender(){
   out.innerHTML=h;
   out.scrollTop=out.scrollHeight;
 }
+IM.lvl=0;IM.pending=0;IM.speaking=false;IM.err='';IM.raf=0;IM.tts=IM.tts!==false;
+function imStatusText(st){
+  if(st==='error')return IM.err;
+  if(st==='listening')return tr('Listening… · بسمعك','بسمعك…');
+  if(st==='translating')return tr('Translating… · بترجم','بترجم…');
+  if(st==='speaking')return tr('Reading the translation · بقرأ الترجمة','بقرأ الترجمة');
+  return tr('Tap the microphone and start speaking · اضغط الميكروفون وابدأ الكلام','اضغط الميكروفون وابدأ الكلام');
+}
+function imState(){
+  const st=IM.err?'error':IM.pending>0?'translating':IM.speaking?'speaking':IM.on?'listening':'idle';
+  const el=$('#imOrb');if(el)el.className='im-orb '+st;
+  const s2=$('#imStatus');if(s2){s2.textContent=imStatusText(st);s2.dataset.st=st;}
+  imKick();
+}
+function imBump(v){IM.lvl=Math.max(IM.lvl,v);imKick();}
+function imKick(){
+  if(IM.raf)return;
+  const step=()=>{
+    const el=$('#imOrb');
+    if(!el){IM.raf=0;return;}
+    if(IM.speaking)IM.lvl=0.45+0.4*Math.abs(Math.sin(performance.now()/180));
+    else IM.lvl*=0.9;
+    if(!IM.speaking&&IM.lvl<0.01&&!IM.on){IM.lvl=0;el.style.setProperty('--lvl','0');IM.raf=0;return;}
+    el.style.setProperty('--lvl',IM.lvl.toFixed(3));
+    IM.raf=requestAnimationFrame(step);
+  };
+  IM.raf=requestAnimationFrame(step);
+}
+function imSpeak(text,to){
+  if(!IM.tts||!text||!window.speechSynthesis||!window.SpeechSynthesisUtterance)return;
+  try{
+    const u=new SpeechSynthesisUtterance(text);
+    u.lang=to==='ar-EG'?'ar-EG':'en-US';u.rate=0.95;
+    const done=()=>{IM.speaking=false;imState();};
+    u.onstart=()=>{IM.speaking=true;imState();};
+    u.onend=done;u.onerror=done;
+    speechSynthesis.cancel();speechSynthesis.speak(u);
+  }catch(e){}
+}
 function imRun(e){
   const from=e.from,to=e.to;
-  e.tr=null;imRender();
-  imTranslate(e.src,from,to).then(t=>{e.tr=t;imRender();}).catch(()=>{e.tr=false;imRender();});
+  e.tr=null;IM.pending++;imRender();imState();
+  imTranslate(e.src,from,to)
+    .then(t=>{e.tr=t;imSpeak(t.text,to);})
+    .catch(()=>{e.tr=false;})
+    .finally(()=>{IM.pending--;imRender();imState();});
 }
 function imAdd(text,conf){
   const from=IM.src,to=imOther(from);
@@ -2291,40 +2365,55 @@ function imAdd(text,conf){
 }
 function imStop(){
   IM.on=false;IM.interim='';
-  if(IM.rec){const r=IM.rec;IM.rec=null;try{r.onend=null;r.onresult=null;r.stop();}catch(x){}}
+  if(IM.rec){const r=IM.rec;IM.rec=null;try{r.onend=null;r.onresult=null;r.onerror=null;r.onspeechstart=null;r.stop();}catch(x){}}
+  try{if(window.speechSynthesis)speechSynthesis.cancel();}catch(x){}
+  IM.speaking=false;
   const b=$('#imMic');if(b){b.classList.remove('on');const sp=b.querySelector('span');if(sp)sp.textContent=tr('Start speaking','ابدأ الكلام');}
-  imRender();
+  imRender();imState();
 }
 function imStart(){
-  if(!SR){toast(tr('Voice input is not supported in this browser. Use Chrome or Edge.','المتصفح ده مايدعمش الصوت. جرّب Chrome أو Edge.'),5000);return;}
-  if(inAppBrowser()){toast(tr('Open the site in Chrome or Edge to use the microphone.','افتح الموقع في Chrome أو Edge عشان الميكروفون يشتغل.'),5000);return;}
+  if(!SR){IM.err=tr('Voice input is not supported in this browser. Use Chrome or Edge.','المتصفح ده مايدعمش الصوت. جرّب Chrome أو Edge.');imState();toast(IM.err,5000);return;}
+  if(inAppBrowser()){IM.err=tr('Open the site in Chrome or Edge to use the microphone.','افتح الموقع في Chrome أو Edge عشان الميكروفون يشتغل.');imState();toast(IM.err,5000);return;}
+  IM.err='';
   const r=new SR();
   r.lang=IM.src;r.continuous=true;r.interimResults=true;r.maxAlternatives=3;
+  r.onspeechstart=()=>imBump(0.8);
   r.onresult=ev=>{
+    IM.err='';
     let interim='';
     for(let i=ev.resultIndex;i<ev.results.length;i++){
       const res=ev.results[i];
       if(res.isFinal){
-        // نختار أعلى بديل ثقة، ولو المتصفح مابيرجعش ثقة نختار الأول
         let best=res[0];for(let k=1;k<res.length;k++)if((res[k].confidence||0)>(best.confidence||0))best=res[k];
         const t=best.transcript.trim();
         if(t)imAdd(t,best.confidence||0);
       }else interim+=res[0].transcript;
     }
-    IM.interim=interim.trim();imRender();
+    IM.interim=interim.trim();imBump(0.9);imRender();imState();
   };
   r.onerror=ev=>{
     const c=ev.error;
-    if(c==='not-allowed'||c==='service-not-allowed')toast(tr('Microphone permission is blocked. Allow it in the browser site settings.','الميكروفون متقفل. اسمح بيه من إعدادات الموقع في المتصفح.'),5000);
-    else if(c==='network')toast(tr('Voice input needs an internet connection.','الصوت محتاج إنترنت.'),4000);
-    else if(c==='audio-capture')toast(tr('No microphone found.','مفيش ميكروفون.'),4000);
-    if(c!=='no-speech'&&c!=='aborted')imStop();
+    if(c==='no-speech'){IM.err=tr('I did not hear anything. Speak again.','مسمعتش حاجة، اتكلم تاني.');imState();return;}
+    if(c==='aborted')return;
+    let m='';
+    if(c==='not-allowed'||c==='service-not-allowed')m=tr('Microphone permission is blocked. Allow it in the browser site settings.','الميكروفون متقفل. اسمح بيه من إعدادات الموقع في المتصفح.');
+    else if(c==='network')m=tr('Voice input needs an internet connection.','الصوت محتاج إنترنت.');
+    else if(c==='audio-capture')m=tr('No microphone found.','مفيش ميكروفون.');
+    else m=tr('Voice input stopped. Tap the microphone to try again.','الصوت وقف. اضغط الميكروفون عشان تجرب تاني.');
+    IM.err=m;toast(m,5000);imStop();IM.err=m;imState();
   };
-  r.onend=()=>{if(IM.on&&IM.rec===r){IM.interim='';try{r.start();}catch(x){imStop();}}};
+  r.onend=()=>{
+    if(!(IM.on&&IM.rec===r))return;
+    IM.interim='';imRender();
+    setTimeout(()=>{
+      if(!(IM.on&&IM.rec===r))return;
+      try{r.start();}catch(x){imStop();IM.err=tr('Could not restart the microphone. Tap it again.','متقدرش أرجّع الميكروفون. اضغط عليه تاني.');imState();}
+    },300);
+  };
   IM.rec=r;IM.on=true;
-  try{r.start();}catch(x){imStop();return;}
+  try{r.start();}catch(x){IM.on=false;IM.rec=null;IM.err=tr('Could not start the microphone. Tap it again.','متقدرش أشغّل الميكروفون. اضغط عليه تاني.');imState();return;}
   const b=$('#imMic');if(b){b.classList.add('on');const sp=b.querySelector('span');if(sp)sp.textContent=tr('Stop','إيقاف');}
-  imRender();
+  imRender();imState();
 }
 async function imLook(text){
   const w=text.replace(/[^\p{L}\p{N}'\-]/gu,'');
@@ -2345,6 +2434,7 @@ function imWire(){
     document.querySelectorAll('[data-imsrc]').forEach(y=>y.classList.toggle('on',y===x));
     const ph=$('#imWord');if(ph)ph.dir=imDir(IM.src);
   });
+  const tt=$('#imTts');if(tt)tt.onclick=()=>{IM.tts=!IM.tts;if(!IM.tts){try{speechSynthesis.cancel();}catch(x){}IM.speaking=false;}tt.classList.toggle('on',IM.tts);tt.setAttribute('aria-pressed',String(IM.tts));imState();};
   const go=$('#imGo'),inp=$('#imWord');
   if(go)go.onclick=()=>imLook(inp.value);
   if(inp)inp.onkeydown=e=>{if(e.key==='Enter')imLook(inp.value);};
@@ -2367,18 +2457,22 @@ function imWire(){
 VIEWS.interp=function(){
   if(!IM_LEAVE_SET.v){LEAVE.push(imStop);IM_LEAVE_SET.v=true;}
   const en=IM.src==='en-US';
-  main('<div class="fade"><h1>'+tr('Voice Translator','المترجم الصوتي')+'</h1>'
-   +'<p class="sub">'+tr('Speak, see your words and their translation. Tap any word you do not know to translate it. Medical terms from the book are translated exactly as the book says.','اتكلم، وشوف كلامك وترجمته. اضغط على أي كلمة مش عارفها عشان تترجمها. المصطلحات الطبية من الكتاب بتتترجم زي ما الكتاب مكتوب بالظبط.')+'</p>'
-   +'<div class="card im-card"><div class="seg" role="group">'
+  main('<div class="fade im-page"><h1>'+tr('Voice Translator','المترجم الصوتي')+'</h1>'
+   +'<p class="sub">'+tr('Speak and hear the translation. Tap any word to translate it. Medical terms from the book are translated exactly as the book says.','اتكلم واسمع الترجمة. اضغط على أي كلمة عشان تترجمها. المصطلحات الطبية من الكتاب بتتترجم زي ما هي في الكتاب بالظبط.')+'</p>'
+   +'<div class="card im-card">'
+   +'<div class="seg" role="group">'
    +'<button type="button" data-imsrc="en-US" class="'+(en?'on':'')+'">English → العربي</button>'
    +'<button type="button" data-imsrc="ar-EG" class="'+(en?'':'on')+'">العربي → English</button></div>'
-   +'<div class="im-row"><button class="im-mic'+(IM.on?' on':'')+'" id="imMic" type="button">'+ic('voice')+'<span>'+(IM.on?tr('Stop','إيقاف'):tr('Start speaking','ابدأ الكلام'))+'</span></button></div>'
-   +'<div class="im-out" id="imOut" role="log" aria-live="polite"></div>'
+   +'<div class="im-stage"><div class="im-orb idle" id="imOrb" aria-hidden="true"><span class="ring r3"></span><span class="ring r2"></span><span class="ring r1"></span><span class="arc"></span><span class="core"></span></div></div>'
+   +'<div class="im-status" id="imStatus" role="status" aria-live="polite"></div>'
+   +'<div class="im-row"><button class="im-mic'+(IM.on?' on':'')+'" id="imMic" type="button">'+ic('voice')+'<span>'+(IM.on?tr('Stop','إيقاف'):tr('Start speaking','ابدأ الكلام'))+'</span></button>'
+   +'<button class="im-tts'+(IM.tts?' on':'')+'" id="imTts" type="button" aria-pressed="'+String(IM.tts)+'">🔊 <span>'+tr('Read aloud','اقرأ الترجمة')+'</span></button></div>'
+   +'<div class="im-out" id="imOut" role="log" aria-live="off"></div>'
    +'<div class="im-look"><input id="imWord" dir="auto" placeholder="'+tr('Type a word to translate…','اكتب كلمة عشان تترجمها…')+'"><button class="btn" id="imGo" type="button">'+tr('Translate','ترجم')+'</button></div>'
    +'<div class="im-wo" id="imWordOut"></div>'
    +'<p class="sub small">'+tr('Speech is recognised by your browser (Chrome or Edge work best). Translation uses the browser\'s built-in translator when available; otherwise the text is sent to the MyMemory translation service. Always check important terms.','الكلام بيتحول لنص عن طريق المتصفح (Chrome أو Edge أفضل). الترجمة بتستخدم مترجم المتصفح لو موجود، ولو لأ النص بيتبعت لخدمة MyMemory. راجع المصطلحات المهمة دايماً.')+'</p>'
    +'</div></div>');
-  imWire();
+  imWire();imState();
 };
 
 function go(v,a){stopMic();
@@ -2957,7 +3051,7 @@ VIEWS.dashboard=function(){
   const qa=[
     ['act','qmis','refresh',tr('Review mistakes','راجع أخطاءك'),tr('Go back over the questions you got wrong and repeat them until you master each one.','ارجع للأسئلة اللي غلطت فيها وكرّرها لحد ما تتقنها.'),mis?tr(nfmt(mis)+' to review',nfmt(mis)+' سؤال للمراجعة'):tr('Nothing to review yet','لسه مفيش حاجة للمراجعة')],
     ['act','qexam','clock',tr('Quick exam','امتحان سريع'),tr('20 timed questions with no hints, to measure your real level before the exam.','٢٠ سؤال بوقت ومن غير تلميحات، تقيس بيهم مستواك الحقيقي قبل الامتحان.'),tr('20 questions','٢٠ سؤال')],
-    ['go','flash','ready',tr('Flashcards','البطاقات والجداول'),tr('Quick revision cards and comparison tables for last-minute study.','بطاقات وجداول مقارنة للمراجعة السريعة قبل الامتحان.'),tr('Revise fast','مراجعة سريعة')],
+    ['go','flash','cards',tr('Flashcards','البطاقات والجداول'),tr('Quick revision cards and comparison tables for last-minute study.','بطاقات وجداول مقارنة للمراجعة السريعة قبل الامتحان.'),tr('Revise fast','مراجعة سريعة')],
     ['go','arena','users',tr('Friends Arena','ساحة الأصدقاء'),tr('Create a room or join one with a code and compete with friends on the same questions.','اعمل روم أو ادخل بكود وتنافس مع صحابك على نفس الأسئلة.'),tr('Play together','العبوا سوا')]
   ];
   main('<div class="fade"><div class="card hero2"><div class="h2txt"><h1>'+esc(tr('Welcome back, '+(S.name||'Player'),'أهلاً بيك يا '+(S.name||'بطل')))+' 👋</h1><p class="sub">'+tr('Ready for today\'s session? Pick up right where you left off.','جاهز لمذاكرة النهارده؟ كمّل من حيث وقفت.')+'</p></div><button class="btn big xl" data-go="study">'+ic('play','sm')+' '+tr('Start Studying','ابدأ المذاكرة')+'</button></div>'+
